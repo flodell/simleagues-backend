@@ -37,6 +37,14 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    #Local apps
+    'apps.cars',
+    'apps.tracks',
+    'apps.leagues',
+    'apps.championships',
+    'apps.races',
+    'apps.users'
 ]
 
 MIDDLEWARE = [
