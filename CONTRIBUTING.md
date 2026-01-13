@@ -37,7 +37,7 @@ This project and everyone participating in it is governed by our commitment to p
 ```bash
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
-   pip install -r requirements/development.txt
+   pip install -r requirements/development.txt.txt
 ```
 4. **Create a branch** for your changes
 ```bash

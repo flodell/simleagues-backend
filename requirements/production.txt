@@ -1,0 +1,8 @@
+-r base.txt
+
+# WSGI Server
+gunicorn>=23.0
+
+# Static files
+whitenoise>=6.8
+

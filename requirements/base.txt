@@ -1,0 +1,18 @@
+# Framework
+Django>=6.0,<6.1
+djangorestframework>=3.15
+
+# Database
+psycopg2-binary>=2.9
+
+# Configuration
+python-decouple>=3.8
+
+# CORS
+django-cors-headers>=4.6
+
+# Filtering
+django-filter>=24.0
+
+# Images
+Pillow>=11.0

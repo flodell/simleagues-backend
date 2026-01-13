@@ -1,0 +1,15 @@
+-r base.txt
+
+# Testing
+pytest>=8.0
+pytest-django>=4.9
+pytest-cov>=6.0
+
+# Code Quality
+black>=24.0
+flake8>=7.0
+isort>=5.13
+
+# Debugging
+ipdb>=0.13
+django-debug-toolbar>=4.6
