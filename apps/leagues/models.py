@@ -7,20 +7,24 @@ from django.db import models
 
 User = get_user_model()
 
+
 class LeagueMemberRole(models.TextChoices):
     ADMIN = "Admin", "Admin"
     MODERATOR = "MODERATOR", "Moderator"
-    MEMBER  = "MEMBER ", "Member"
+    MEMBER = "MEMBER ", "Member"
+
 
 class LeagueVisibility(models.TextChoices):
-    PUBLIC = 'PUBLIC', 'Public (Anyone can join)'
-    INVITE_ONLY = 'INVITE_ONLY', 'Invite Only (Need invitation code)'
-    PRIVATE = 'PRIVATE', 'Private (Admin approval required)'
+    PUBLIC = "PUBLIC", "Public (Anyone can join)"
+    INVITE_ONLY = "INVITE_ONLY", "Invite Only (Need invitation code)"
+    PRIVATE = "PRIVATE", "Private (Admin approval required)"
+
 
 class JoinRequestStatus(models.TextChoices):
-    PENDING = 'PENDING', 'Pending'
-    APPROVED = 'APPROVED', 'Approved'
-    REJECTED = 'REJECTED', 'Rejected'
+    PENDING = "PENDING", "Pending"
+    APPROVED = "APPROVED", "Approved"
+    REJECTED = "REJECTED", "Rejected"
+
 
 class League(models.Model):
     """
@@ -32,21 +36,17 @@ class League(models.Model):
 
     # Basic Information
     name = models.CharField(
-        max_length=200,
-        help_text="League name (e.g., 'Friday Night Endurance League')"
+        max_length=200, help_text="League name (e.g., 'Friday Night Endurance League')"
     )
 
-    description = models.TextField(
-        blank=True,
-        help_text="League description and rules"
-    )
+    description = models.TextField(blank=True, help_text="League description and rules")
 
     # Creator
     creator = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='created_leagues',
-        help_text="User who created this league"
+        related_name="created_leagues",
+        help_text="User who created this league",
     )
 
     # Visibility and Access Control
@@ -54,14 +54,14 @@ class League(models.Model):
         max_length=20,
         choices=LeagueVisibility.choices,
         default=LeagueVisibility.PUBLIC,
-        help_text="League visibility and join requirements"
+        help_text="League visibility and join requirements",
     )
 
     invitation_code = models.CharField(
         max_length=32,
         unique=True,
         blank=True,
-        help_text="Unique invitation code for INVITE_ONLY leagues"
+        help_text="Unique invitation code for INVITE_ONLY leagues",
     )
 
     # Metadata
@@ -69,9 +69,9 @@ class League(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['-created_at']
-        verbose_name = 'League'
-        verbose_name_plural = 'Leagues'
+        ordering = ["-created_at"]
+        verbose_name = "League"
+        verbose_name_plural = "Leagues"
 
     def __str__(self):
         return self.name
@@ -100,15 +100,12 @@ class League(models.Model):
 
     def get_active_championships(self):
         """Get all active championships."""
-        return self.championships.filter(status='ACTIVE')
+        return self.championships.filter(status="ACTIVE")
 
     # Permission checks
     def is_admin(self, user):
         """Check if user is an admin of this league."""
-        return self.memberships.filter(
-            user=user,
-            role=LeagueMemberRole.ADMIN
-        ).exists()
+        return self.memberships.filter(user=user, role=LeagueMemberRole.ADMIN).exists()
 
     def is_member(self, user):
         """Check if user is a member (admin or regular)."""
@@ -117,17 +114,14 @@ class League(models.Model):
     def is_moderator(self, user):
         """Check if user is a moderator of this league."""
         return self.memberships.filter(
-            user=user,
-            role=LeagueMemberRole.MODERATOR
+            user=user, role=LeagueMemberRole.MODERATOR
         ).exists()
 
     def is_staff(self, user):
         """Check if user is admin or moderator (has staff permissions)."""
         return self.memberships.filter(
-            user=user,
-            role__in=[LeagueMemberRole.ADMIN, LeagueMemberRole.MODERATOR]
+            user=user, role__in=[LeagueMemberRole.ADMIN, LeagueMemberRole.MODERATOR]
         ).exists()
-
 
     # Specific permission checks
     def can_manage_races(self, user):
@@ -189,32 +183,28 @@ class LeagueMembership(models.Model):
     """
 
     league = models.ForeignKey(
-        League,
-        on_delete=models.CASCADE,
-        related_name='memberships'
+        League, on_delete=models.CASCADE, related_name="memberships"
     )
 
     user = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name='league_memberships'
+        User, on_delete=models.CASCADE, related_name="league_memberships"
     )
 
     role = models.CharField(
         max_length=10,
         choices=LeagueMemberRole.choices,
         default=LeagueMemberRole.MEMBER,
-        help_text="Member role in the league"
+        help_text="Member role in the league",
     )
 
     # Metadata
     joined_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        verbose_name = 'League Membership'
-        verbose_name_plural = 'League Memberships'
-        unique_together = ['league', 'user']
-        ordering = ['-joined_at']
+        verbose_name = "League Membership"
+        verbose_name_plural = "League Memberships"
+        unique_together = ["league", "user"]
+        ordering = ["-joined_at"]
 
     def __str__(self):
         return f"{self.user.username} - {self.league.name} ({self.role})"
@@ -228,28 +218,21 @@ class LeagueJoinRequest(models.Model):
     """
 
     league = models.ForeignKey(
-        League,
-        on_delete=models.CASCADE,
-        related_name='join_requests'
+        League, on_delete=models.CASCADE, related_name="join_requests"
     )
 
     user = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name='league_join_requests'
+        User, on_delete=models.CASCADE, related_name="league_join_requests"
     )
 
     status = models.CharField(
         max_length=10,
         choices=JoinRequestStatus.choices,
         default=JoinRequestStatus.PENDING,
-        help_text="Status of the join request"
+        help_text="Status of the join request",
     )
 
-    message = models.TextField(
-        blank=True,
-        help_text="Optional message from the user"
-    )
+    message = models.TextField(blank=True, help_text="Optional message from the user")
 
     # Admin response
     reviewed_by = models.ForeignKey(
@@ -257,13 +240,12 @@ class LeagueJoinRequest(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='reviewed_join_requests',
-        help_text="Admin who reviewed the request"
+        related_name="reviewed_join_requests",
+        help_text="Admin who reviewed the request",
     )
 
     admin_message = models.TextField(
-        blank=True,
-        help_text="Optional message from admin"
+        blank=True, help_text="Optional message from admin"
     )
 
     # Metadata
@@ -271,10 +253,10 @@ class LeagueJoinRequest(models.Model):
     reviewed_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
-        verbose_name = 'League Join Request'
-        verbose_name_plural = 'League Join Requests'
-        unique_together = ['league', 'user', 'status']
-        ordering = ['-requested_at']
+        verbose_name = "League Join Request"
+        verbose_name_plural = "League Join Requests"
+        unique_together = ["league", "user", "status"]
+        ordering = ["-requested_at"]
 
     def __str__(self):
         return f"{self.user.username} → {self.league.name} ({self.status})"
@@ -291,9 +273,7 @@ class LeagueJoinRequest(models.Model):
 
         # Create membership
         LeagueMembership.objects.create(
-            league=self.league,
-            user=self.user,
-            role=LeagueMemberRole.MEMBER
+            league=self.league, user=self.user, role=LeagueMemberRole.MEMBER
         )
 
     def reject(self, admin_user, message=""):
@@ -305,4 +285,3 @@ class LeagueJoinRequest(models.Model):
         self.admin_message = message
         self.reviewed_at = timezone.now()
         self.save()
-

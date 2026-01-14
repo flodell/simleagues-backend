@@ -1,19 +1,21 @@
 from django.db import models
 from django.contrib.auth import get_user_model
+from apps.races.models import RaceResult, RaceStatus
+from django.core.exceptions import ValidationError
 
 User = get_user_model()
 
 
 class ChampionshipStatus(models.TextChoices):
-    UPCOMING = 'UPCOMING', 'Upcoming'
-    ACTIVE = 'ACTIVE', 'Active'
-    COMPLETED = 'COMPLETED', 'Completed'
-    CANCELLED = 'CANCELLED', 'Cancelled'
+    UPCOMING = "UPCOMING", "Upcoming"
+    ACTIVE = "ACTIVE", "Active"
+    COMPLETED = "COMPLETED", "Completed"
+    CANCELLED = "CANCELLED", "Cancelled"
 
 
 class ParticipantType(models.TextChoices):
-    TEAM = 'TEAM', 'Team'
-    INDIVIDUAL = 'INDIVIDUAL', 'Individual'
+    TEAM = "TEAM", "Team"
+    INDIVIDUAL = "INDIVIDUAL", "Individual"
 
 
 class Championship(models.Model):
@@ -26,21 +28,21 @@ class Championship(models.Model):
 
     # League reference
     league = models.ForeignKey(
-        'leagues.League',
+        "leagues.League",
         on_delete=models.CASCADE,
-        related_name='championships',
+        related_name="championships",
     )
 
     # Basic Information
     name = models.CharField(
         max_length=200,
-        help_text="Championship name (e.g., '2025 Season 1', 'Winter Cup')"
+        help_text="Championship name (e.g., '2025 Season 1', 'Winter Cup')",
     )
 
     season = models.CharField(
         max_length=50,
         blank=True,
-        help_text="Season identifier (e.g., '2025', 'Winter 2025')"
+        help_text="Season identifier (e.g., '2025', 'Winter 2025')",
     )
 
     description = models.TextField(
@@ -78,19 +80,19 @@ class Championship(models.Model):
     # Rules and Configuration
     point_system = models.JSONField(
         default=dict,
-        help_text="Point system as JSON (e.g., {'1': 25, '2': 18, '3': 15, ...})"
+        help_text="Point system as JSON (e.g., {'1': 25, '2': 18, '3': 15, ...})",
     )
 
     allowed_car_categories = models.JSONField(
         default=list,
         blank=True,
-        help_text="Allowed car categories as JSON array (e.g., ['HYPERCAR', 'LMP2'])"
+        help_text="Allowed car categories as JSON array (e.g., ['HYPERCAR', 'LMP2'])",
     )
 
     max_participants = models.IntegerField(
         null=True,
         blank=True,
-        help_text="Maximum number of participants (teams or drivers)"
+        help_text="Maximum number of participants (teams or drivers)",
     )
 
     # Status
@@ -98,7 +100,7 @@ class Championship(models.Model):
         max_length=20,
         choices=ChampionshipStatus.choices,
         default=ChampionshipStatus.UPCOMING,
-        help_text="Current championship status"
+        help_text="Current championship status",
     )
 
     # Metadata
@@ -106,29 +108,29 @@ class Championship(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = 'Championship'
-        verbose_name_plural = 'Championships'
-        ordering = ['-start_date']
-
+        verbose_name = "Championship"
+        verbose_name_plural = "Championships"
+        ordering = ["-start_date"]
 
     def __str__(self):
         return f"{self.league.name} - {self.name}"
 
     def clean(self):
         """Validate team driver limits."""
-        from django.core.exceptions import ValidationError
 
         if self.participant_type == ParticipantType.TEAM:
             if self.min_drivers_per_team and self.max_drivers_per_team:
                 if self.min_drivers_per_team > self.max_drivers_per_team:
-                    raise ValidationError({
-                        'min_drivers_per_team': 'Minimum cannot be greater than maximum.'
-                    })
+                    raise ValidationError(
+                        {
+                            "min_drivers_per_team": "Minimum cannot be greater than maximum."
+                        }
+                    )
 
             if self.min_drivers_per_team and self.min_drivers_per_team < 1:
-                raise ValidationError({
-                    'min_drivers_per_team': 'Minimum must be at least 1.'
-                })
+                raise ValidationError(
+                    {"min_drivers_per_team": "Minimum must be at least 1."}
+                )
 
     @property
     def race_count(self):
@@ -138,7 +140,7 @@ class Championship(models.Model):
     @property
     def completed_race_count(self):
         """Get number of completed races."""
-        return self.races.filter(status='COMPLETED').count()
+        return self.races.filter(status="COMPLETED").count()
 
     @property
     def participant_count(self):
@@ -150,7 +152,6 @@ class Championship(models.Model):
             return self.teams.count()
         return 0
 
-
     def get_default_point_system(self):
         """
         Get default FIA WEC point system.
@@ -159,8 +160,16 @@ class Championship(models.Model):
             dict: Default point system
         """
         return {
-            '1': 25, '2': 18, '3': 15, '4': 12, '5': 10,
-            '6': 8, '7': 6, '8': 4, '9': 2, '10': 1
+            "1": 25,
+            "2": 18,
+            "3": 15,
+            "4": 12,
+            "5": 10,
+            "6": 8,
+            "7": 6,
+            "8": 4,
+            "9": 2,
+            "10": 1,
         }
 
 
@@ -174,7 +183,7 @@ class Team(models.Model):
     championship = models.ForeignKey(
         Championship,
         on_delete=models.CASCADE,
-        related_name='teams',
+        related_name="teams",
     )
 
     # Team Information
@@ -182,11 +191,10 @@ class Team(models.Model):
         max_length=200,
     )
 
-    racing_number = models.IntegerField(
-    )
+    racing_number = models.IntegerField()
 
     car = models.ForeignKey(
-        'cars.Car',
+        "cars.Car",
         on_delete=models.PROTECT,
     )
 
@@ -194,14 +202,10 @@ class Team(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        verbose_name = 'Team'
-        verbose_name_plural = 'Teams'
-        unique_together = [
-            ['championship', 'name'],
-            ['championship', 'racing_number']
-        ]
-        ordering = ['racing_number']
-
+        verbose_name = "Team"
+        verbose_name_plural = "Teams"
+        unique_together = [["championship", "name"], ["championship", "racing_number"]]
+        ordering = ["racing_number"]
 
     def __str__(self):
         return f"#{self.racing_number} {self.name}"
@@ -250,15 +254,11 @@ class Team(models.Model):
 
     def clean(self):
         """Validate team has correct number of drivers before saving."""
-        from django.core.exceptions import ValidationError
-
         is_valid, message = self.is_valid_driver_count
 
         # Only validate if team already exists (has drivers)
         if self.pk and not is_valid:
-            raise ValidationError({
-                'drivers': message
-            })
+            raise ValidationError({"drivers": message})
 
 
 class Driver(models.Model):
@@ -273,54 +273,45 @@ class Driver(models.Model):
     championship = models.ForeignKey(
         Championship,
         on_delete=models.CASCADE,
-        related_name='participants',
-        help_text="Championship this participant is registered in"
+        related_name="participants",
+        help_text="Championship this participant is registered in",
     )
 
     user = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name='participations'
+        User, on_delete=models.CASCADE, related_name="participations"
     )
 
     # Team reference (optional - only for team championships)
     team = models.ForeignKey(
-        'Team',
+        Team,
         on_delete=models.CASCADE,
-        related_name='members',
+        related_name="members",
         null=True,
         blank=True,
-        help_text="Team this driver belongs to (only for team championships)"
+        help_text="Team this driver belongs to (only for team championships)",
     )
 
     car = models.ForeignKey(
-        'cars.Car',
-        on_delete=models.PROTECT,
-        help_text="Car used by this driver/team"
+        "cars.Car", on_delete=models.PROTECT, help_text="Car used by this driver/team"
     )
 
-    racing_number = models.IntegerField(
-        help_text="Driver or team racing number"
-    )
+    racing_number = models.IntegerField(help_text="Driver or team racing number")
 
     # Driver role (for team championships)
     role = models.CharField(
         max_length=100,
         blank=True,
-        help_text="Driver role in team (e.g., 'Pro', 'Am', 'Silver', 'Gold'). Only for team championships."
+        help_text="Driver role in team (e.g., 'Pro', 'Am', 'Silver', 'Gold'). Only for team championships.",
     )
 
     # Metadata
     joined_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        verbose_name = 'Participant'
-        verbose_name_plural = 'Participants'
-        unique_together = [
-            ['championship', 'user'],
-            ['championship', 'racing_number']
-        ]
-        ordering = ['racing_number']
+        verbose_name = "Participant"
+        verbose_name_plural = "Participants"
+        unique_together = [["championship", "user"], ["championship", "racing_number"]]
+        ordering = ["racing_number"]
 
     def __str__(self):
         if self.team:
@@ -329,35 +320,202 @@ class Driver(models.Model):
 
     def clean(self):
         """Validate participant based on championship type."""
-        from django.core.exceptions import ValidationError
 
         # Team championship: must have a team
         if self.championship.participant_type == ParticipantType.TEAM:
             if not self.team:
-                raise ValidationError({
-                    'team': 'Team is required for team championships.'
-                })
+                raise ValidationError(
+                    {"team": "Team is required for team championships."}
+                )
 
             # Check if driver is already in another team in this championship
             existing_in_other_team = Driver.objects.filter(
-                    championship=self.championship,
-                    user=self.user,
-                    team__isnull=False
-                ).exclude(pk=self.pk)
+                championship=self.championship, user=self.user, team__isnull=False
+            ).exclude(pk=self.pk)
 
             if existing_in_other_team.exists():
                 other_team = existing_in_other_team.first().team
-                raise ValidationError({
-                    'driver': f'Driver is already in team "{other_team.name}" for this championship.'
-                })
+                raise ValidationError(
+                    {
+                        "driver": f'Driver is already in team "{other_team.name}" for this championship.'
+                    }
+                )
 
         # Individual championship: must NOT have a team
         if self.championship.participant_type == ParticipantType.INDIVIDUAL:
             if self.team:
-                raise ValidationError({
-                    'team': 'Individual championships cannot have teams.'
-                })
+                raise ValidationError(
+                    {"team": "Individual championships cannot have teams."}
+                )
 
     @property
     def is_team_member(self):
         return self.team is not None
+
+
+class Standing(models.Model):
+    """
+    Championship standing entry.
+
+    Can represent either:
+    - Driver standing (for INDIVIDUAL championships)
+    - Team standing (for TEAM championships)
+    """
+
+    championship = models.ForeignKey(
+        Championship,
+        on_delete=models.CASCADE,
+        related_name="standings",
+        help_text="Championship this standing belongs to",
+    )
+
+    # Either driver OR team (mutually exclusive)
+    driver = models.ForeignKey(
+        Driver,
+        on_delete=models.CASCADE,
+        related_name="standings",
+        null=True,
+        blank=True,
+        help_text="Driver (only for INDIVIDUAL championships)",
+    )
+
+    team = models.ForeignKey(
+        Team,
+        on_delete=models.CASCADE,
+        related_name="standings",
+        null=True,
+        blank=True,
+        help_text="Team (only for TEAM championships)",
+    )
+
+    # Current position
+    position = models.IntegerField(
+        default=0, help_text="Current position in championship"
+    )
+
+    # Aggregated stats
+    total_points = models.IntegerField(default=0, help_text="Total championship points")
+
+    races_completed = models.IntegerField(
+        default=0, help_text="Number of races completed"
+    )
+
+    wins = models.IntegerField(default=0, help_text="Number of race wins (P1)")
+
+    podiums = models.IntegerField(
+        default=0, help_text="Number of podium finishes (P1-P3)"
+    )
+
+    fastest_laps = models.IntegerField(default=0, help_text="Number of fastest laps")
+
+    dnf_count = models.IntegerField(
+        default=0, verbose_name="DNF count", help_text="Number of DNFs (Did Not Finish)"
+    )
+
+    dsq_count = models.IntegerField(
+        default=0, verbose_name="DSQ count", help_text="Number of disqualifications"
+    )
+
+    # Best result
+    best_finish = models.IntegerField(
+        null=True, blank=True, help_text="Best finishing position in this championship"
+    )
+
+    # Metadata
+    last_updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Standing"
+        verbose_name_plural = "Standings"
+        ordering = ["championship", "-total_points"]
+        constraints = [
+            # For INDIVIDUAL championships: unique driver per championship
+            models.UniqueConstraint(
+                fields=["championship", "driver"],
+                condition=models.Q(driver__isnull=False),
+                name="unique_driver_standing_per_championship",
+            ),
+            # For TEAM championships: unique team per championship
+            models.UniqueConstraint(
+                fields=["championship", "team"],
+                condition=models.Q(team__isnull=False),
+                name="unique_team_standing_per_championship",
+            ),
+        ]
+
+    def clean(self):
+        """Validate standing based on championship type."""
+
+        # Must have exactly one: driver OR team
+        if not self.driver and not self.team:
+            raise ValidationError(
+                {
+                    "driver": "Must specify either driver or team.",
+                    "team": "Must specify either driver or team.",
+                }
+            )
+
+        if self.driver and self.team:
+            raise ValidationError(
+                {
+                    "driver": "Cannot have both driver and team.",
+                    "team": "Cannot have both driver and team.",
+                }
+            )
+
+        # Validate based on championship type
+        if self.championship.participant_type == ParticipantType.INDIVIDUAL:
+            if not self.driver:
+                raise ValidationError(
+                    {"driver": "Individual championships require a driver."}
+                )
+            if self.team:
+                raise ValidationError(
+                    {"team": "Individual championships cannot have teams."}
+                )
+
+        if self.championship.participant_type == ParticipantType.TEAM:
+            if not self.team:
+                raise ValidationError({"team": "Team championships require a team."})
+            if self.driver:
+                raise ValidationError(
+                    {"driver": "Team championships cannot have individual drivers."}
+                )
+
+    def recalculate(self):
+        """
+        Recalculate standings from race results.
+
+        For INDIVIDUAL championships: aggregates driver's results
+        For TEAM championships: aggregates team's results
+        """
+
+        # Get results based on championship type
+        if self.championship.participant_type == ParticipantType.INDIVIDUAL:
+            results = RaceResult.objects.filter(
+                race__championship=self.championship,
+                race__status=RaceStatus.COMPLETED,
+                user=self.driver.user,
+                team__isnull=True,  # Ensure it's an individual result
+            )
+        else:
+            results = RaceResult.objects.filter(
+                race__championship=self.championship,
+                race__status=RaceStatus.COMPLETED,
+                team=self.team,
+            )
+
+        # Aggregate points and stats
+        self.total_points = sum(r.points for r in results)
+        self.races_completed = results.count()
+        self.wins = results.filter(position=1).count()
+        self.podiums = results.filter(position__lte=3).count()
+        self.fastest_laps = results.filter(fastest_lap=True).count()
+        self.dnf_count = results.filter(dnf=True).count()
+        self.dsq_count = results.filter(dsq=True).count()
+
+        # Best finish
+        best_result = results.order_by("position").first()
+        self.best_finish = best_result.position if best_result else None
+
+        self.save()

@@ -2,4 +2,4 @@ from django.apps import AppConfig
 
 
 class TracksConfig(AppConfig):
-    name = 'apps.tracks'
+    name = "apps.tracks"
