@@ -261,7 +261,7 @@ class Team(models.Model):
             })
 
 
-class Participant(models.Model):
+class Driver(models.Model):
     """
     Represents a driver participating in a championship.
 
@@ -277,7 +277,7 @@ class Participant(models.Model):
         help_text="Championship this participant is registered in"
     )
 
-    driver = models.ForeignKey(
+    user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name='participations'
@@ -317,15 +317,15 @@ class Participant(models.Model):
         verbose_name = 'Participant'
         verbose_name_plural = 'Participants'
         unique_together = [
-            ['championship', 'driver'],
+            ['championship', 'user'],
             ['championship', 'racing_number']
         ]
         ordering = ['racing_number']
 
     def __str__(self):
         if self.team:
-            return f"#{self.racing_number} {self.driver.username} ({self.team.name})"
-        return f"#{self.racing_number} {self.driver.username}"
+            return f"#{self.racing_number} {self.user.username} ({self.team.name})"
+        return f"#{self.racing_number} {self.user.username}"
 
     def clean(self):
         """Validate participant based on championship type."""
@@ -336,6 +336,19 @@ class Participant(models.Model):
             if not self.team:
                 raise ValidationError({
                     'team': 'Team is required for team championships.'
+                })
+
+            # Check if driver is already in another team in this championship
+            existing_in_other_team = Driver.objects.filter(
+                    championship=self.championship,
+                    user=self.user,
+                    team__isnull=False
+                ).exclude(pk=self.pk)
+
+            if existing_in_other_team.exists():
+                other_team = existing_in_other_team.first().team
+                raise ValidationError({
+                    'driver': f'Driver is already in team "{other_team.name}" for this championship.'
                 })
 
         # Individual championship: must NOT have a team
