@@ -3,7 +3,7 @@ from django.db import models
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 
-from apps.championships.models import Championship, Driver, Team, ParticipantType
+from apps.championships.choices import ParticipantType
 from apps.leagues.models import League
 
 User = get_user_model()
@@ -36,7 +36,7 @@ class Race(models.Model):
 
     # League reference (optional)
     league = models.ForeignKey(
-        League,
+        "leagues.League",
         on_delete=models.CASCADE,
         related_name="races",
         null=True,
@@ -46,7 +46,7 @@ class Race(models.Model):
 
     # Championship reference (optional, requires league)
     championship = models.ForeignKey(
-        Championship,
+        "championships.Championship",
         on_delete=models.CASCADE,
         related_name="races",
         null=True,
@@ -343,7 +343,7 @@ class RaceResult(models.Model):
 
     # Driver reference (always required)
     driver = models.ForeignKey(
-        Driver,
+        "championships.Driver",
         on_delete=models.CASCADE,
         related_name="race_results",
         help_text="Driver who achieved this result",
@@ -351,7 +351,7 @@ class RaceResult(models.Model):
 
     # Team (for TEAM championships only)
     team = models.ForeignKey(
-        Team,
+        "championships.Team",
         on_delete=models.CASCADE,
         related_name="team_race_results",
         null=True,

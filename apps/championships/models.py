@@ -1,5 +1,7 @@
 from django.db import models
 from django.contrib.auth import get_user_model
+
+from apps.championships.choices import ParticipantType
 from apps.races.models import RaceResult, RaceStatus
 from django.core.exceptions import ValidationError
 
@@ -11,11 +13,6 @@ class ChampionshipStatus(models.TextChoices):
     ACTIVE = "ACTIVE", "Active"
     COMPLETED = "COMPLETED", "Completed"
     CANCELLED = "CANCELLED", "Cancelled"
-
-
-class ParticipantType(models.TextChoices):
-    TEAM = "TEAM", "Team"
-    INDIVIDUAL = "INDIVIDUAL", "Individual"
 
 
 class Championship(models.Model):
