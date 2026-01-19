@@ -43,13 +43,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "django_filters",
     # Local apps
-    "apps.cars",
-    "apps.tracks",
-    "apps.leagues",
-    "apps.championships",
-    "apps.races",
-    "apps.users",
-    "apps.games",
+    "core",
 ]
 
 MIDDLEWARE = [

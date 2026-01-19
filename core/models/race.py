@@ -3,23 +3,15 @@ from django.db import models
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 
-from apps.championships.choices import ParticipantType
-from apps.leagues.models import League
+from core.models.championship import Driver, Team, Championship
+from core.models.choices import RaceVisibility, RaceStatus, ParticipantType
+from core.models.league import League
+from core.models.track import Track
 
 User = get_user_model()
 
 
-class RaceStatus(models.TextChoices):
-    SCHEDULED = "SCHEDULED", "Scheduled"
-    IN_PROGRESS = "IN_PROGRESS", "In Progress"
-    COMPLETED = "COMPLETED", "Completed"
-    CANCELLED = "CANCELLED", "Cancelled"
 
-
-class RaceVisibility(models.TextChoices):
-    PUBLIC = "PUBLIC", "Public (Anyone can view)"
-    UNLISTED = "UNLISTED", "Unlisted (Only with link)"
-    PRIVATE = "PRIVATE", "Private (League members only)"
 
 
 class Race(models.Model):
@@ -36,7 +28,7 @@ class Race(models.Model):
 
     # League reference (optional)
     league = models.ForeignKey(
-        "leagues.League",
+        League,
         on_delete=models.CASCADE,
         related_name="races",
         null=True,
@@ -46,7 +38,7 @@ class Race(models.Model):
 
     # Championship reference (optional, requires league)
     championship = models.ForeignKey(
-        "championships.Championship",
+        Championship,
         on_delete=models.CASCADE,
         related_name="races",
         null=True,
@@ -75,7 +67,7 @@ class Race(models.Model):
 
     # Track reference
     track = models.ForeignKey(
-        "tracks.Track",
+        Track,
         on_delete=models.PROTECT,
         help_text="Track where this race takes place",
     )
@@ -343,20 +335,20 @@ class RaceResult(models.Model):
 
     # Driver reference (always required)
     driver = models.ForeignKey(
-        "championships.Driver",
+        Driver,
         on_delete=models.CASCADE,
         related_name="race_results",
         help_text="Driver who achieved this result",
     )
 
-    # Team (for TEAM championships only)
+    # Team (for TEAM championship only)
     team = models.ForeignKey(
-        "championships.Team",
+        Team,
         on_delete=models.CASCADE,
         related_name="team_race_results",
         null=True,
         blank=True,
-        help_text="Team this result belongs to (only for TEAM championships)",
+        help_text="Team this result belongs to (only for TEAM championship)",
     )
 
     # Result data

@@ -1,9 +1,6 @@
 from django.db import models
 
-from apps.games.models import Game
-
-
-# Create your models here.
+from core.models.game import Game
 
 
 class Track(models.Model):

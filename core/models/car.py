@@ -1,14 +1,9 @@
 from django.db import models
 
-# Create your models here.
+from core.models.choices import CarCategory
+from core.models.game import Game
 
 
-class CarCategory(models.TextChoices):
-    HYPERCAR = "HYPERCAR", "Hypercar"
-    LMGT3 = "LMGT3", "LMGT3"
-    LPM2 = "LPM2", "LPM2"
-    LPM3 = "LPM3", "LPM3"
-    GTE = "GTE", "GTE"
 
 
 class CarSubCategory(models.Model):
@@ -34,7 +29,7 @@ class CarSubCategory(models.Model):
 
 class Car(models.Model):
     game = models.ForeignKey(
-        "games.Game",
+        Game,
         on_delete=models.CASCADE,
         related_name="cars",
         help_text="Game where this car is available",

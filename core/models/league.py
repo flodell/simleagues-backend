@@ -3,27 +3,14 @@ import secrets
 from django.contrib.auth import get_user_model
 from django.db import models
 
+from core.models.choices import LeagueVisibility, LeagueMemberRole, JoinRequestStatus
+
 # Create your models here.
 
 User = get_user_model()
 
 
-class LeagueMemberRole(models.TextChoices):
-    ADMIN = "Admin", "Admin"
-    MODERATOR = "MODERATOR", "Moderator"
-    MEMBER = "MEMBER ", "Member"
 
-
-class LeagueVisibility(models.TextChoices):
-    PUBLIC = "PUBLIC", "Public (Anyone can join)"
-    INVITE_ONLY = "INVITE_ONLY", "Invite Only (Need invitation code)"
-    PRIVATE = "PRIVATE", "Private (Admin approval required)"
-
-
-class JoinRequestStatus(models.TextChoices):
-    PENDING = "PENDING", "Pending"
-    APPROVED = "APPROVED", "Approved"
-    REJECTED = "REJECTED", "Rejected"
 
 
 class League(models.Model):
@@ -31,7 +18,7 @@ class League(models.Model):
     Represents a racing league organization.
 
     A league is a group of drivers who compete together.
-    Leagues can have multiple championships over time.
+    Leagues can have multiple championship over time.
     """
 
     # Basic Information
@@ -99,7 +86,7 @@ class League(models.Model):
         return self.memberships.count()
 
     def get_active_championships(self):
-        """Get all active championships."""
+        """Get all active championship."""
         return self.championships.filter(status="ACTIVE")
 
     # Permission checks
@@ -129,7 +116,7 @@ class League(models.Model):
         return self.is_staff(user)
 
     def can_manage_championships(self, user):
-        """Check if user can create and manage championships."""
+        """Check if user can create and manage championship."""
         return self.is_staff(user)
 
     def can_approve_members(self, user):

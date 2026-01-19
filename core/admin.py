@@ -1,9 +1,6 @@
 from django.contrib import admin
 
-from apps.cars.models import Car, CarSubCategory
-
-
-# Register your models here.
+from core.models.car import CarSubCategory, Car
 
 
 @admin.register(CarSubCategory)

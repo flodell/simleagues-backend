@@ -1,18 +1,13 @@
-from django.db import models
 from django.contrib.auth import get_user_model
-
-from apps.championships.choices import ParticipantType
-from apps.races.models import RaceResult, RaceStatus
 from django.core.exceptions import ValidationError
+from django.db import models
+
+from core.models.car import Car
+from core.models.choices import ParticipantType, ChampionshipStatus, RaceStatus
+from core.models.league import League
+from core.models.race import RaceResult
 
 User = get_user_model()
-
-
-class ChampionshipStatus(models.TextChoices):
-    UPCOMING = "UPCOMING", "Upcoming"
-    ACTIVE = "ACTIVE", "Active"
-    COMPLETED = "COMPLETED", "Completed"
-    CANCELLED = "CANCELLED", "Cancelled"
 
 
 class Championship(models.Model):
@@ -20,12 +15,12 @@ class Championship(models.Model):
     Represents a racing championship within a league.
 
     A championship is a series of races with a specific ruleset
-    and point system. Leagues can have multiple championships.
+    and point system. Leagues can have multiple championship.
     """
 
     # League reference
     league = models.ForeignKey(
-        "leagues.League",
+        League,
         on_delete=models.CASCADE,
         related_name="championships",
     )
@@ -61,7 +56,7 @@ class Championship(models.Model):
         default=ParticipantType.INDIVIDUAL,
     )
 
-    # Team Configuration (only for TEAM championships)
+    # Team Configuration (only for TEAM championship)
     min_drivers_per_team = models.IntegerField(
         null=True,
         blank=True,
@@ -191,7 +186,7 @@ class Team(models.Model):
     racing_number = models.IntegerField()
 
     car = models.ForeignKey(
-        "cars.Car",
+        Car,
         on_delete=models.PROTECT,
     )
 
@@ -278,27 +273,27 @@ class Driver(models.Model):
         User, on_delete=models.CASCADE, related_name="participations"
     )
 
-    # Team reference (optional - only for team championships)
+    # Team reference (optional - only for team championship)
     team = models.ForeignKey(
         Team,
         on_delete=models.CASCADE,
         related_name="members",
         null=True,
         blank=True,
-        help_text="Team this driver belongs to (only for team championships)",
+        help_text="Team this driver belongs to (only for team championship)",
     )
 
     car = models.ForeignKey(
-        "cars.Car", on_delete=models.PROTECT, help_text="Car used by this driver/team"
+        Car, on_delete=models.PROTECT, help_text="Car used by this driver/team"
     )
 
     racing_number = models.IntegerField(help_text="Driver or team racing number")
 
-    # Driver role (for team championships)
+    # Driver role (for team championship)
     role = models.CharField(
         max_length=100,
         blank=True,
-        help_text="Driver role in team (e.g., 'Pro', 'Am', 'Silver', 'Gold'). Only for team championships.",
+        help_text="Driver role in team (e.g., 'Pro', 'Am', 'Silver', 'Gold'). Only for team championship.",
     )
 
     # Metadata
@@ -322,7 +317,7 @@ class Driver(models.Model):
         if self.championship.participant_type == ParticipantType.TEAM:
             if not self.team:
                 raise ValidationError(
-                    {"team": "Team is required for team championships."}
+                    {"team": "Team is required for team championship."}
                 )
 
             # Check if driver is already in another team in this championship
@@ -342,7 +337,7 @@ class Driver(models.Model):
         if self.championship.participant_type == ParticipantType.INDIVIDUAL:
             if self.team:
                 raise ValidationError(
-                    {"team": "Individual championships cannot have teams."}
+                    {"team": "Individual championship cannot have teams."}
                 )
 
     @property
@@ -355,8 +350,8 @@ class Standing(models.Model):
     Championship standing entry.
 
     Can represent either:
-    - Driver standing (for INDIVIDUAL championships)
-    - Team standing (for TEAM championships)
+    - Driver standing (for INDIVIDUAL championship)
+    - Team standing (for TEAM championship)
     """
 
     championship = models.ForeignKey(
@@ -373,7 +368,7 @@ class Standing(models.Model):
         related_name="standings",
         null=True,
         blank=True,
-        help_text="Driver (only for INDIVIDUAL championships)",
+        help_text="Driver (only for INDIVIDUAL championship)",
     )
 
     team = models.ForeignKey(
@@ -382,7 +377,7 @@ class Standing(models.Model):
         related_name="standings",
         null=True,
         blank=True,
-        help_text="Team (only for TEAM championships)",
+        help_text="Team (only for TEAM championship)",
     )
 
     # Current position
@@ -426,13 +421,13 @@ class Standing(models.Model):
         verbose_name_plural = "Standings"
         ordering = ["championship", "-total_points"]
         constraints = [
-            # For INDIVIDUAL championships: unique driver per championship
+            # For INDIVIDUAL championship: unique driver per championship
             models.UniqueConstraint(
                 fields=["championship", "driver"],
                 condition=models.Q(driver__isnull=False),
                 name="unique_driver_standing_per_championship",
             ),
-            # For TEAM championships: unique team per championship
+            # For TEAM championship: unique team per championship
             models.UniqueConstraint(
                 fields=["championship", "team"],
                 condition=models.Q(team__isnull=False),
@@ -464,27 +459,27 @@ class Standing(models.Model):
         if self.championship.participant_type == ParticipantType.INDIVIDUAL:
             if not self.driver:
                 raise ValidationError(
-                    {"driver": "Individual championships require a driver."}
+                    {"driver": "Individual championship require a driver."}
                 )
             if self.team:
                 raise ValidationError(
-                    {"team": "Individual championships cannot have teams."}
+                    {"team": "Individual championship cannot have teams."}
                 )
 
         if self.championship.participant_type == ParticipantType.TEAM:
             if not self.team:
-                raise ValidationError({"team": "Team championships require a team."})
+                raise ValidationError({"team": "Team championship require a team."})
             if self.driver:
                 raise ValidationError(
-                    {"driver": "Team championships cannot have individual drivers."}
+                    {"driver": "Team championship cannot have individual drivers."}
                 )
 
     def recalculate(self):
         """
         Recalculate standings from race results.
 
-        For INDIVIDUAL championships: aggregates driver's results
-        For TEAM championships: aggregates team's results
+        For INDIVIDUAL championship: aggregates driver's results
+        For TEAM championship: aggregates team's results
         """
 
         # Get results based on championship type
