@@ -2,6 +2,7 @@ from django.db import models
 
 # CAR CHOICES
 
+
 class CarCategory(models.TextChoices):
     HYPERCAR = "HYPERCAR", "Hypercar"
     LMGT3 = "LMGT3", "LMGT3"
@@ -9,7 +10,9 @@ class CarCategory(models.TextChoices):
     LPM3 = "LPM3", "LPM3"
     GTE = "GTE", "GTE"
 
+
 # RACE CHOICES
+
 
 class RaceStatus(models.TextChoices):
     SCHEDULED = "SCHEDULED", "Scheduled"
@@ -25,6 +28,7 @@ class RaceVisibility(models.TextChoices):
 
 
 # LEAGUE CHOICES
+
 
 class LeagueMemberRole(models.TextChoices):
     ADMIN = "Admin", "Admin"
@@ -43,7 +47,9 @@ class JoinRequestStatus(models.TextChoices):
     APPROVED = "APPROVED", "Approved"
     REJECTED = "REJECTED", "Rejected"
 
+
 # CHAMPIONSHIP CHOICES
+
 
 class ChampionshipStatus(models.TextChoices):
     UPCOMING = "UPCOMING", "Upcoming"
@@ -51,9 +57,10 @@ class ChampionshipStatus(models.TextChoices):
     COMPLETED = "COMPLETED", "Completed"
     CANCELLED = "CANCELLED", "Cancelled"
 
+
 # PARTICIPANT CHOICES
+
 
 class ParticipantType(models.TextChoices):
     TEAM = "TEAM", "Team"
     INDIVIDUAL = "INDIVIDUAL", "Individual"
-

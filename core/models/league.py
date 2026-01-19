@@ -10,9 +10,6 @@ from core.models.choices import LeagueVisibility, LeagueMemberRole, JoinRequestS
 User = get_user_model()
 
 
-
-
-
 class League(models.Model):
     """
     Represents a racing league organization.

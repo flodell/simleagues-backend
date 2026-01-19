@@ -11,9 +11,6 @@ from core.models.track import Track
 User = get_user_model()
 
 
-
-
-
 class Race(models.Model):
     """
     Represents a single race.

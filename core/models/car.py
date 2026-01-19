@@ -4,8 +4,6 @@ from core.models.choices import CarCategory
 from core.models.game import Game
 
 
-
-
 class CarSubCategory(models.Model):
     """
     Subcategories for racing cars.
