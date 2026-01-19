@@ -1,14 +1,7 @@
 from django.db import models
 
-# Create your models here.
-
-
-class CarCategory(models.TextChoices):
-    HYPERCAR = "HYPERCAR", "Hypercar"
-    LMGT3 = "LMGT3", "LMGT3"
-    LPM2 = "LPM2", "LPM2"
-    LPM3 = "LPM3", "LPM3"
-    GTE = "GTE", "GTE"
+from core.models.choices import CarCategory
+from core.models.game import Game
 
 
 class CarSubCategory(models.Model):
@@ -16,31 +9,42 @@ class CarSubCategory(models.Model):
     Subcategories for racing cars.
     Each subcategory is linked to a specific category.
     """
+
     name = models.CharField(max_length=40, unique=True)
     code = models.CharField(max_length=20, unique=True)
     category = models.CharField(max_length=30, choices=CarCategory.choices)
     description = models.TextField(blank=True, help_text="Optional description")
 
     class Meta:
-        verbose_name = 'Car Subcategory'
-        verbose_name_plural = 'Car Subcategories'
-        ordering = ['category', 'name']
-        unique_together = ['category', 'code']
+        verbose_name = "Car Subcategory"
+        verbose_name_plural = "Car Subcategories"
+        ordering = ["category", "name"]
+        unique_together = ["category", "code"]
 
     def __str__(self):
         return f"{self.name} ({self.category})"
 
 
 class Car(models.Model):
-    game = models.ForeignKey('games.Game', on_delete=models.CASCADE, related_name='cars', help_text='Game where this car is available')
+    game = models.ForeignKey(
+        Game,
+        on_delete=models.CASCADE,
+        related_name="cars",
+        help_text="Game where this car is available",
+    )
 
     # Basic informations
     name = models.CharField(max_length=200)
     manufacturer = models.CharField(max_length=100)
     category = models.CharField(max_length=30, choices=CarCategory.choices)
-    subcategory = models.ForeignKey(CarSubCategory, on_delete=models.PROTECT, null=True, blank=True, related_name='cars')
+    subcategory = models.ForeignKey(
+        CarSubCategory,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="cars",
+    )
     year = models.IntegerField()
-
 
     # Technical specs
     engine = models.CharField(max_length=200, blank=True)
@@ -58,9 +62,17 @@ class Car(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['-created_at', '-updated_at', 'name', 'manufacturer', 'category', 'subcategory', 'year']
-        verbose_name = 'Car'
-        verbose_name_plural = 'Cars'
+        ordering = [
+            "-created_at",
+            "-updated_at",
+            "name",
+            "manufacturer",
+            "category",
+            "subcategory",
+            "year",
+        ]
+        verbose_name = "Car"
+        verbose_name_plural = "Cars"
 
     def __str__(self):
         year_str = f" ({self.year})" if self.year else ""
@@ -84,6 +96,8 @@ class Car(models.Model):
         from django.core.exceptions import ValidationError
 
         if self.subcategory and self.subcategory.category != self.category:
-            raise ValidationError({
-                'subcategory': f'Subcategory "{self.subcategory}" is not valid for category "{self.category}".'
-            })
+            raise ValidationError(
+                {
+                    "subcategory": f'Subcategory "{self.subcategory}" is not valid for category "{self.category}".'
+                }
+            )
