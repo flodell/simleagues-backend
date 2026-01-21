@@ -192,6 +192,7 @@ class Team(models.Model):
 
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = "Team"
@@ -298,6 +299,7 @@ class Driver(models.Model):
 
     # Metadata
     joined_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = "Participant"
@@ -414,7 +416,8 @@ class Standing(models.Model):
     )
 
     # Metadata
-    last_updated = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = "Standing"
