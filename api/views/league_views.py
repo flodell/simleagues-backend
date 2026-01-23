@@ -1,10 +1,9 @@
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Case, When
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
-from rest_framework.status import HTTP_200_OK
 
 from api.permissions import IsLeagueAdmin, IsLeagueStaff
 from api.serializers.league_serializers import LeagueCreateSerializer, LeagueDetailSerializer, LeagueListSerializer, \
@@ -20,6 +19,12 @@ class LeagueViewSet(viewsets.ModelViewSet):
     search_fields = ['name', 'game__name']
     ordering_fields = ['created_at', 'name', 'member_count']
     ordering = ['-created_at']
+    permission_classes = [AllowAny]
+
+    # Groupes d’actions
+    AUTH_ONLY_ACTIONS = frozenset(['create', 'join', 'leave'])
+    STAFF_ACTIONS = frozenset(['update', 'partial_update', 'kick'])
+    ADMIN_ACTIONS = frozenset(['destroy', 'archive', 'restore', 'promote'])
 
     def get_queryset(self):
         user = self.request.user
@@ -29,7 +34,12 @@ class LeagueViewSet(viewsets.ModelViewSet):
         )
         if not user.is_authenticated:
             return queryset.filter(visibility=LeagueVisibility.PUBLIC ,is_active=True)
-        return queryset.filter(Q(visibility=LeagueVisibility.PUBLIC) | Q(members=user))
+
+        return queryset.filter(
+            Q(visibility=LeagueVisibility.PUBLIC, is_active=True) |
+            Q(visibility=LeagueVisibility.INVITE_ONLY, is_active=True) |
+            Q(members=user)
+        ).distinct()
 
     def get_serializer_class(self):
         """Return appropriate serializer based on action"""
@@ -41,41 +51,36 @@ class LeagueViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         """Set permissions based on action"""
-        if self.action == 'create':
-            permission_classes = [IsAuthenticated]
-        elif self.action in ['update', 'partial_update']:
-            permission_classes = [IsAuthenticated, IsLeagueStaff]
-        elif self.action == 'destroy':
-            permission_classes = [IsAuthenticated, IsLeagueAdmin]
-        elif self.action in ['join', 'leave']:
-            permission_classes = [IsAuthenticated]
-        elif self.action in ['kick', 'promote']:
-            permission_classes = [IsAuthenticated, IsLeagueStaff]
+        if self.action in self.ADMIN_ACTIONS:
+            perms = [IsAuthenticated, IsLeagueAdmin]
+        elif self.action in self.STAFF_ACTIONS:
+            perms = [IsAuthenticated, IsLeagueStaff]
+        elif self.action in self.AUTH_ONLY_ACTIONS:
+            perms = [IsAuthenticated]
+            # Public
         else:
-            permission_classes = [AllowAny]
-
-        return [permission() for permission in permission_classes]
+            perms = [AllowAny]
+        return [p() for p in perms]
 
     def perform_create(self, serializer):
         """
-        Create league and automatically add creator as owner/admin.
+        Create league and automatically add creator as admin.
         """
-        league = serializer.save()
+        league = serializer.save(creator=self.request.user)
         LeagueMembership.objects.create(
             league=league,
             user=self.request.user,
             role=LeagueMemberRole.ADMIN,
-            is_admin=True
         )
 
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
-    def join(self, request):
+    @action(detail=True, methods=['post'])
+    def join(self, request, pk=None):
         """
-        Join a league. Requires invite_code for private leagues.
+        Join a league. Requires invitation_code for private leagues.
 
         Request body (for private leagues):
         {
-            "invite_code": "abc123xyz"
+            "invitation_code": "abc123xyz"
         }
 
         Response 201:
@@ -92,6 +97,13 @@ class LeagueViewSet(viewsets.ModelViewSet):
         league = self.get_object()
         user = request.user
 
+        if not league.is_active:
+            return Response({
+                {
+                    'detail': 'Cannot join an archived league',
+                    'status_code': status.HTTP_400_BAD_REQUEST,
+                }
+            })
         # Check if already a member
         if LeagueMembership.objects.filter(league=league, user=user).exists():
             return Response(
@@ -100,9 +112,9 @@ class LeagueViewSet(viewsets.ModelViewSet):
             )
 
         # Check visibility and invite code for private leagues
-        if league.visibility == LeagueVisibility.PRIVATE:
-            invite_code = request.data.get('invite_code')
-            if not invite_code or invite_code != league.invite_code:
+        if league.visibility == LeagueVisibility.INVITE_ONLY:
+            invitation_code = request.data.get('invitation_code')
+            if not invitation_code or invitation_code != league.invitation_code:
                 return Response(
                     {'detail': 'Invalid or missing invite code.'},
                     status=status.HTTP_403_FORBIDDEN
@@ -118,7 +130,7 @@ class LeagueViewSet(viewsets.ModelViewSet):
         serializer = LeagueMembershipSerializer(membership)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    @action(detail=True, methods=['post'])
     def leave(self, request, pk=None):
         """
         Leave a league. Admin cannot leave their own league.
@@ -151,7 +163,7 @@ class LeagueViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsLeagueAdmin])
+    @action(detail=True, methods=['post'])
     def kick(self, request, pk=None):
         """
         Kick a member from the league. Moderator cannot kick admin.
@@ -162,7 +174,7 @@ class LeagueViewSet(viewsets.ModelViewSet):
         }
 
         Response 204: Successfully removed
-        Response 400: Tried to kick owner or missing user_id
+        Response 400: Tried to kick admin or missing user_id
         Response 404: Member not found
         """
         league = self.get_object()
@@ -195,9 +207,64 @@ class LeagueViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsLeagueAdmin])
-    def promote(self, request):
-        pass
+    @action(detail=True, methods=['post'])
+    def promote(self, request, pk=None):
+        league = self.get_object()
+        user_id = request.data.get('user_id')
+        new_role = request.data.get('new_role')
+
+        if not user_id or not new_role:
+            return Response(
+                {'detail': 'user_id and new_role are required.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            role = LeagueMemberRole(new_role)
+        except ValueError:
+            return Response(
+                {
+                    "detail": "Invalid new role."},
+                    status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            membership = LeagueMembership.objects.get(league=league, user_id=user_id)
+            current_role = membership.role
+
+            if current_role == LeagueMemberRole.ADMIN and membership.user != request.user:
+                return Response(
+                    {'detail': 'Cannot change role of another admin. They must demote themselves.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            # Cannot demote yourself if you're the only admin
+            if membership.user == request.user and membership.role == LeagueMemberRole.ADMIN:
+                admin_count = league.memberships.filter(role=LeagueMemberRole.ADMIN).count()
+                if admin_count == 1:
+                    return Response(
+                        {'detail': 'Cannot change your role as the only admin.'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+            # No change if same role
+            if current_role == new_role:
+                return Response(
+                    {'detail': f'User already has role {new_role}.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            membership.role = role
+            membership.save()
+
+            serializer = LeagueMembershipSerializer(membership)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        except LeagueMembership.DoesNotExist:
+            return Response(
+                {'detail': 'Member not found.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
 
     @action(detail=True, methods=['get'])
     def members(self, request, pk=None):
@@ -209,7 +276,12 @@ class LeagueViewSet(viewsets.ModelViewSet):
         """
         league = self.get_object()
         memberships = league.memberships.select_related('user').order_by(
-            '-is_admin', 'role', 'joined_at'
+            Case(
+                When(role=LeagueMemberRole.ADMIN, then=0),
+                When(role=LeagueMemberRole.MODERATOR, then=1),
+                default=2
+            ),
+            'joined_at'
         )
         serializer = LeagueMembershipSerializer(memberships, many=True)
         return Response(serializer.data)
@@ -225,4 +297,53 @@ class LeagueViewSet(viewsets.ModelViewSet):
         championships = league.championships.all()
 
         #serializer = ChampionshipListSerializer(championships, many=True)
-        return Response(HTTP_200_OK)
+        return Response({'message': 'Championship list endpoint - to be implemented'})
+
+
+    @action(detail=True, methods=['post'])
+    def archive(self, request, pk=None):
+        """
+        Archive  a league.
+
+        Only admins can perform this action.
+        """
+        league = self.get_object()
+
+        if not league.is_active:
+            return Response(
+                {'detail': 'League is already archived.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        league.is_active = False
+        league.save()
+
+        return Response(
+            {
+                'detail': f'League successfully archived',
+                'is_active': False
+            },
+            status=status.HTTP_200_OK
+        )
+
+    @action(detail=True, methods=['post'])
+    def restore(self, request, pk=None):
+        """
+        Restore  a league.
+
+        Only admins can perform this action.
+        """
+
+        league = self.get_object()
+        if league.is_active:
+            return Response(
+                {'detail': 'League already active.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        league.is_active = True
+        league.save()
+        return Response(
+            {
+                'detail': f'League successfully restored',
+                'is_active': True
+            }
+        )

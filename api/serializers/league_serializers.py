@@ -71,8 +71,9 @@ class LeagueCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = League
         fields = [
-            'name', 'description', 'visibility', 'game'
+            'id', 'name', 'description', 'visibility', 'game'
         ]
+        read_only_fields = ['id']
 
     def validate_name(self, value):
         """Validate league name"""
