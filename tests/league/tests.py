@@ -275,7 +275,87 @@ class LeagueAPITestCase(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-        
+    # ===== DELETE/ARCHIVE TESTS =====
+
+    def test_delete_league_archives_by_default(self):
+        """Test that DELETE archives the league by default (soft delete)"""
+        self.client.force_authenticate(user=self.user1)
+        url = reverse('league-detail', kwargs={'pk': self.league1.pk})
+        response = self.client.delete(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # League still exists but is archived
+        league = League.objects.get(pk=self.league1.pk)
+        self.assertFalse(league.is_active)
+
+    def test_delete_already_archived_league(self):
+        """Test that archiving an already archived league fails"""
+        self.league1.is_active = False
+        self.league1.save()
+
+        self.client.force_authenticate(user=self.user1)
+        url = reverse('league-detail', kwargs={'pk': self.league1.pk})
+        response = self.client.delete(url)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('already archived', response.data['detail'].lower())
+
+    def test_hard_delete_without_confirmation(self):
+        """Test that hard delete requires confirmation"""
+        self.client.force_authenticate(user=self.user1)
+        url = reverse('league-detail', kwargs={'pk': self.league1.pk}) + '?hard_delete=true'
+        response = self.client.delete(url)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('confirm_delete', response.data['detail'])
+
+    def test_hard_delete_with_wrong_confirmation(self):
+        """Test that hard delete fails with wrong confirmation"""
+        self.client.force_authenticate(user=self.user1)
+        url = reverse('league-detail', kwargs={'pk': self.league1.pk}) + '?hard_delete=true'
+        data = {'confirm_delete': 'Wrong Name'}
+        response = self.client.delete(url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_hard_delete_with_championships(self):
+        """Test that hard delete is blocked if league has championships"""
+        # Create a championship
+        Championship.objects.create(
+            league=self.league1,
+            name='Test Championship',
+            start_date='2025-01-01'
+        )
+
+        self.client.force_authenticate(user=self.user1)
+        url = reverse('league-detail', kwargs={'pk': self.league1.pk}) + '?hard_delete=true'
+        data = {'confirm_delete': self.league1.name}
+        response = self.client.delete(url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('championships', response.data['detail'].lower())
+
+    def test_hard_delete_empty_league_success(self):
+        """Test that hard delete succeeds for empty league with confirmation"""
+        self.client.force_authenticate(user=self.user1)
+        url = reverse('league-detail', kwargs={'pk': self.league1.pk}) + '?hard_delete=true'
+        data = {'confirm_delete': self.league1.name}
+        response = self.client.delete(url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+        # League should be deleted
+        self.assertFalse(League.objects.filter(pk=self.league1.pk).exists())
+
+    def test_delete_as_non_admin_fails(self):
+        """Test that non-admins cannot delete league"""
+        self.client.force_authenticate(user=self.user2)
+        url = reverse('league-detail', kwargs={'pk': self.league1.pk})
+        response = self.client.delete(url)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
 
     # ===== ARCHIVE/RESTORE TESTS =====
 

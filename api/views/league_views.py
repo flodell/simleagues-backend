@@ -73,6 +73,96 @@ class LeagueViewSet(viewsets.ModelViewSet):
             role=LeagueMemberRole.ADMIN,
         )
 
+    def destroy(self, request, pk=None, **kwargs):
+        """
+        Soft delete a league by default (archive it).
+
+        Query params:
+        - hard_delete=true : Permanently delete (requires confirmation)
+
+        Only admins can delete their league.
+
+        Examples:
+        - DELETE /api/leagues/1/ → Archive (soft delete)
+        - DELETE /api/leagues/1/?hard_delete=true → Permanent delete
+        :param **kwargs:
+        """
+        league = self.get_object()
+        hard_delete = request.query_params.get('hard_delete', 'false').lower() == 'true'
+
+        if hard_delete:
+            return self._hard_delete_league(league, request)
+        else:
+            return self._soft_delete_league(league)
+
+    def _soft_delete_league(self, league):
+        """
+        Archive the league (soft delete).
+
+        Sets is_active=False. League remains in database and visible to members.
+        """
+        if not league.is_active:
+            return Response(
+                {'detail': 'League is already archived.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        league.is_active = False
+        league.save()
+
+        return Response(
+            {
+                'detail': 'League successfully archived.',
+                'is_active': False
+            },
+            status=status.HTTP_200_OK
+        )
+
+    def _hard_delete_league(self, league, request):
+        """
+        Permanently delete the league.
+
+        Requires explicit confirmation and checks for existing data.
+
+        Request body:
+        {
+            "confirm_delete": "League Name"
+        }
+        """
+        confirm = request.data.get('confirm_delete')
+        if confirm != league.name:
+            return Response(
+                {
+                    'detail': f'To permanently delete, send "confirm_delete": "{league.name}"',
+                    'required_confirmation': league.name
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Vérifier s'il y a du contenu important
+        championship_count = league.championships.count()
+        race_count = league.races.count()
+
+        if championship_count > 0 or race_count > 0:
+            return Response(
+                {
+                    'detail': 'Cannot delete league with existing championships or races.',
+                    'championships': championship_count,
+                    'races': race_count,
+                    'suggestion': 'Archive the league instead or delete all content first.'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Tout est OK, suppression définitive
+        league_name = league.name
+        league.delete()
+
+        return Response(
+            {'detail': f'League "{league_name}" permanently deleted.'},
+            status=status.HTTP_204_NO_CONTENT
+        )
+
     @action(detail=True, methods=['post'])
     def join(self, request, pk=None):
         """
