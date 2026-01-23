@@ -25,6 +25,7 @@ class LeagueListSerializer(serializers.ModelSerializer):
     championship_count = serializers.IntegerField(read_only=True)
     game_name = serializers.CharField(source='game.name', read_only=True)
 
+
     class Meta:
         model = League
         fields = [

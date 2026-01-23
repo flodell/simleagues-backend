@@ -3,7 +3,7 @@ from django.db import models
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 
-from core.models.championship import Driver, Team, Championship
+from core.models.championship import Championship, Driver, Team
 from core.models.choices import RaceVisibility, RaceStatus, ParticipantType
 from core.models.league import League
 from core.models.track import Track
@@ -112,7 +112,7 @@ class Race(models.Model):
 
     # Results entry tracking
     entered_by = models.ForeignKey(
-        User,
+        Driver,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -292,6 +292,7 @@ class Race(models.Model):
         # For league races, must be league member
         if self.league:
             return self.league.is_member(user)
+
 
         # For independent races, anyone can participate
         return True

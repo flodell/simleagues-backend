@@ -48,6 +48,7 @@ class League(models.Model):
         max_length=32,
         unique=True,
         blank=True,
+        null=True,
         help_text="Unique invitation code for INVITE_ONLY leagues",
     )
 
@@ -92,11 +93,6 @@ class League(models.Model):
         if self.visibility == LeagueVisibility.INVITE_ONLY and not self.invitation_code:
             self.invitation_code = self.generate_invitation_code()
         super().save(*args, **kwargs)
-
-    @property
-    def member_count(self):
-        """Get total number of members."""
-        return self.memberships.count()
 
     def get_active_championships(self):
         """Get all active championship."""
