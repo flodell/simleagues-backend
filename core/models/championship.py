@@ -3,9 +3,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 
 from core.models.car import Car
-from core.models.choices import ParticipantType, ChampionshipStatus, RaceStatus
-from core.models.league import League
-from core.models.race import RaceResult
+from core.models.choices import ParticipantType, ChampionshipStatus
 
 User = get_user_model()
 
@@ -20,7 +18,7 @@ class Championship(models.Model):
 
     # League reference
     league = models.ForeignKey(
-        League,
+        'League',
         on_delete=models.CASCADE,
         related_name="championships",
     )
@@ -192,6 +190,7 @@ class Team(models.Model):
 
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = "Team"
@@ -298,10 +297,11 @@ class Driver(models.Model):
 
     # Metadata
     joined_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = "Participant"
-        verbose_name_plural = "Participants"
+        verbose_name = "Driver"
+        verbose_name_plural = "Drivers"
         unique_together = [["championship", "user"], ["championship", "racing_number"]]
         ordering = ["racing_number"]
 
@@ -414,7 +414,8 @@ class Standing(models.Model):
     )
 
     # Metadata
-    last_updated = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = "Standing"
@@ -474,40 +475,3 @@ class Standing(models.Model):
                     {"driver": "Team championship cannot have individual drivers."}
                 )
 
-    def recalculate(self):
-        """
-        Recalculate standings from race results.
-
-        For INDIVIDUAL championship: aggregates driver's results
-        For TEAM championship: aggregates team's results
-        """
-
-        # Get results based on championship type
-        if self.championship.participant_type == ParticipantType.INDIVIDUAL:
-            results = RaceResult.objects.filter(
-                race__championship=self.championship,
-                race__status=RaceStatus.COMPLETED,
-                user=self.driver.user,
-                team__isnull=True,  # Ensure it's an individual result
-            )
-        else:
-            results = RaceResult.objects.filter(
-                race__championship=self.championship,
-                race__status=RaceStatus.COMPLETED,
-                team=self.team,
-            )
-
-        # Aggregate points and stats
-        self.total_points = sum(r.points for r in results)
-        self.races_completed = results.count()
-        self.wins = results.filter(position=1).count()
-        self.podiums = results.filter(position__lte=3).count()
-        self.fastest_laps = results.filter(fastest_lap=True).count()
-        self.dnf_count = results.filter(dnf=True).count()
-        self.dsq_count = results.filter(dsq=True).count()
-
-        # Best finish
-        best_result = results.order_by("position").first()
-        self.best_finish = best_result.position if best_result else None
-
-        self.save()

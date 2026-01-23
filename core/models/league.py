@@ -1,9 +1,12 @@
 import secrets
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import models
 
 from core.models.choices import LeagueVisibility, LeagueMemberRole, JoinRequestStatus
+from core.models.game import Game
+from django.utils import timezone
 
 # Create your models here.
 
@@ -45,8 +48,22 @@ class League(models.Model):
         max_length=32,
         unique=True,
         blank=True,
+        null=True,
         help_text="Unique invitation code for INVITE_ONLY leagues",
     )
+
+    members = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        through='LeagueMembership',
+        related_name='leagues'
+    )
+
+    game = models.ForeignKey(
+        Game,
+        on_delete=models.PROTECT,
+        related_name='leagues'
+    )
+    is_active = models.BooleanField(default=True)
 
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
@@ -76,11 +93,6 @@ class League(models.Model):
         if self.visibility == LeagueVisibility.INVITE_ONLY and not self.invitation_code:
             self.invitation_code = self.generate_invitation_code()
         super().save(*args, **kwargs)
-
-    @property
-    def member_count(self):
-        """Get total number of members."""
-        return self.memberships.count()
 
     def get_active_championships(self):
         """Get all active championship."""
@@ -247,8 +259,6 @@ class LeagueJoinRequest(models.Model):
 
     def approve(self, admin_user, message=""):
         """Approve the join request and create membership."""
-        from django.utils import timezone
-
         self.status = JoinRequestStatus.APPROVED
         self.reviewed_by = admin_user
         self.admin_message = message
@@ -262,8 +272,6 @@ class LeagueJoinRequest(models.Model):
 
     def reject(self, admin_user, message=""):
         """Reject the join request."""
-        from django.utils import timezone
-
         self.status = JoinRequestStatus.REJECTED
         self.reviewed_by = admin_user
         self.admin_message = message
