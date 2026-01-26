@@ -28,12 +28,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 
 class LoginSerializer(TokenObtainPairSerializer):
-
-    def validate(self, data):
-        data["user"] = {
-            "username": data["username"],
-            "email": data["email"],
-        }
+    pass
 
 
 class LogoutSerializer(serializers.Serializer):
@@ -76,5 +71,5 @@ class UpdateUserPasswordSerializer(serializers.Serializer):
 
     def save(self):
         user = self.context["request"].user
-        user.set_password(self.validated_data["current_password"])
+        user.set_password(self.validated_data["new_password"])
         user.save()
