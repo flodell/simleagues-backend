@@ -293,7 +293,6 @@ class Race(models.Model):
         if self.league:
             return self.league.is_member(user)
 
-
         # For independent races, anyone can participate
         return True
 
