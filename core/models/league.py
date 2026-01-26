@@ -53,16 +53,10 @@ class League(models.Model):
     )
 
     members = models.ManyToManyField(
-        settings.AUTH_USER_MODEL,
-        through='LeagueMembership',
-        related_name='leagues'
+        settings.AUTH_USER_MODEL, through="LeagueMembership", related_name="leagues"
     )
 
-    game = models.ForeignKey(
-        Game,
-        on_delete=models.PROTECT,
-        related_name='leagues'
-    )
+    game = models.ForeignKey(Game, on_delete=models.PROTECT, related_name="leagues")
     is_active = models.BooleanField(default=True)
 
     # Metadata

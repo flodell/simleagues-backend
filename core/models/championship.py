@@ -18,7 +18,7 @@ class Championship(models.Model):
 
     # League reference
     league = models.ForeignKey(
-        'League',
+        "League",
         on_delete=models.CASCADE,
         related_name="championships",
     )
@@ -474,4 +474,3 @@ class Standing(models.Model):
                 raise ValidationError(
                     {"driver": "Team championship cannot have individual drivers."}
                 )
-

@@ -6,16 +6,13 @@ from core.models.league import LeagueMembership, League
 class LeagueMembershipSerializer(serializers.ModelSerializer):
     """Serializer for league membership"""
 
-    username = serializers.CharField(source='user.username', read_only=True)
-    email = serializers.EmailField(source='user.email', read_only=True)
+    username = serializers.CharField(source="user.username", read_only=True)
+    email = serializers.EmailField(source="user.email", read_only=True)
 
     class Meta:
         model = LeagueMembership
-        fields = [
-            'id', 'user', 'username', 'email',
-            'role', 'joined_at'
-        ]
-        read_only_fields = ['joined_at']
+        fields = ["id", "user", "username", "email", "role", "joined_at"]
+        read_only_fields = ["joined_at"]
 
 
 class LeagueListSerializer(serializers.ModelSerializer):
@@ -23,16 +20,21 @@ class LeagueListSerializer(serializers.ModelSerializer):
 
     member_count = serializers.IntegerField(read_only=True)
     championship_count = serializers.IntegerField(read_only=True)
-    game_name = serializers.CharField(source='game.name', read_only=True)
-
+    game_name = serializers.CharField(source="game.name", read_only=True)
 
     class Meta:
         model = League
         fields = [
-            'id', 'name', 'description', 'visibility',
-            'game', 'game_name', 'is_active',
-            'member_count', 'championship_count',
-            'created_at'
+            "id",
+            "name",
+            "description",
+            "visibility",
+            "game",
+            "game_name",
+            "is_active",
+            "member_count",
+            "championship_count",
+            "created_at",
         ]
 
 
@@ -41,7 +43,7 @@ class LeagueDetailSerializer(serializers.ModelSerializer):
 
     member_count = serializers.IntegerField(read_only=True)
     championship_count = serializers.IntegerField(read_only=True)
-    game_name = serializers.CharField(source='game.name', read_only=True)
+    game_name = serializers.CharField(source="game.name", read_only=True)
     memberships = LeagueMembershipSerializer(many=True, read_only=True)
 
     # User's role in this league
@@ -50,30 +52,38 @@ class LeagueDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = League
         fields = [
-            'id', 'name', 'description', 'visibility',
-            'invitation_code', 'game', 'game_name', 'is_active',
-            'member_count', 'championship_count',
-            'memberships', 'user_role',
-            'created_at', 'updated_at'
+            "id",
+            "name",
+            "description",
+            "visibility",
+            "invitation_code",
+            "game",
+            "game_name",
+            "is_active",
+            "member_count",
+            "championship_count",
+            "memberships",
+            "user_role",
+            "created_at",
+            "updated_at",
         ]
-        read_only_fields = ['invitation_code', 'created_at', 'updated_at']
+        read_only_fields = ["invitation_code", "created_at", "updated_at"]
 
     def get_user_role(self, obj):
-        request = self.context.get('request')
+        request = self.context.get("request")
         if not request or not request.user.is_authenticated:
             return None
 
         membership = obj.memberships.filter(user=request.user).first()
         return membership.role if membership else None
 
+
 class LeagueCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = League
-        fields = [
-            'id', 'name', 'description', 'visibility', 'game'
-        ]
-        read_only_fields = ['id']
+        fields = ["id", "name", "description", "visibility", "game"]
+        read_only_fields = ["id"]
 
     def validate_name(self, value):
         """Validate league name"""
