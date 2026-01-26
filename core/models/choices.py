@@ -31,7 +31,7 @@ class RaceVisibility(models.TextChoices):
 
 
 class LeagueMemberRole(models.TextChoices):
-    ADMIN = "Admin", "Admin"
+    ADMIN = "ADMIN", "Admin"
     MODERATOR = "MODERATOR", "Moderator"
     MEMBER = "MEMBER", "Member"
 
