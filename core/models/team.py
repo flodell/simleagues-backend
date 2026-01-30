@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 
 from core.models import League
-from core.models.choices import RoleTeam, TeamJoinRequestStatus, LeagueTeamRegistrationStatus
+from core.models.choices import TeamRole, TeamJoinRequestStatus, LeagueTeamRegistrationStatus
 
 User = get_user_model()
 
@@ -71,7 +71,7 @@ class TeamMembership(models.Model):
 
     team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="memberships", help_text="Team this membership belongs to")
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="team_memberships", help_text="User who is a member of this team")
-    role = models.CharField(max_length=20, choices=RoleTeam)
+    role = models.CharField(max_length=20, choices=TeamRole)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -84,8 +84,8 @@ class TeamMembership(models.Model):
     def clean(self):
         errors = {}
 
-        if self.role == RoleTeam.OWNER:
-            existing_owner = TeamMembership.objects.filter(team=self.team, role=RoleTeam.OWNER).exclude(pk=self.pk).exists()
+        if self.role == TeamRole.OWNER:
+            existing_owner = TeamMembership.objects.filter(team=self.team, role=TeamRole.OWNER).exclude(pk=self.pk).exists()
             if existing_owner:
                 f"Team already has an owner: {existing_owner.user.username}."
         if errors:
@@ -153,7 +153,7 @@ class TeamJoinRequest(models.Model):
             raise ValidationError(errors)
 
 
-    def accept(self, resolved_by, role=RoleTeam.DRIVER):
+    def accept(self, resolved_by, role=TeamRole.DRIVER):
         """
         Accept the join request and create a team membership.
 
@@ -168,7 +168,7 @@ class TeamJoinRequest(models.Model):
         if self.status != TeamJoinRequestStatus.PENDING:
             raise ValidationError("Can only accept pending requests")
 
-        membership = TeamJoinRequest.objects.create(
+        membership = TeamMembership.objects.create(
             team=self.team,
             user=self.user,
             role=role,

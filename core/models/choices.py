@@ -67,7 +67,7 @@ class ParticipantType(models.TextChoices):
 
 # TEAM CHOICES
 
-class RoleTeam(models.TextChoices):
+class TeamRole(models.TextChoices):
     OWNER = "OWNER", "Owner"
     MANAGER = "MANAGER", "Manager"
     DRIVER = "DRIVER", "Driver"
