@@ -18,8 +18,8 @@ class CarSubCategory(models.Model):
     class Meta:
         verbose_name = "Car Subcategory"
         verbose_name_plural = "Car Subcategories"
-        ordering = ["category", "name"]
-        unique_together = ["category", "code"]
+        ordering = ("category", "name")
+        unique_together = ("category", "code")
 
     def __str__(self):
         return f"{self.name} ({self.category})"

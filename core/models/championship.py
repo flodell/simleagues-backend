@@ -148,102 +148,6 @@ class Championship(models.Model):
         }
 
 
-class Team(models.Model):
-    """
-    Represents a racing team in a championship.
-
-    A team can have multiple drivers competing together.
-    """
-
-    championship = models.ForeignKey(
-        Championship,
-        on_delete=models.CASCADE,
-        related_name="teams",
-    )
-
-    owner = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name="owned_teams",
-        help_text="User who created and owns this team",
-    )
-
-    # Team Information
-    name = models.CharField(
-        max_length=200,
-    )
-
-    racing_number = models.IntegerField()
-
-    car = models.ForeignKey(
-        Car,
-        on_delete=models.PROTECT,
-    )
-
-    # Metadata
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        verbose_name = "Team"
-        verbose_name_plural = "Teams"
-        unique_together = [["championship", "name"], ["championship", "racing_number"]]
-        ordering = ["racing_number"]
-
-    def __str__(self):
-        return f"#{self.racing_number} {self.name}"
-
-    @property
-    def driver_count(self):
-        return self.members.count()
-
-    @property
-    def is_valid_driver_count(self):
-        """
-        Check if team has valid number of drivers.
-
-        Returns:
-            tuple: (is_valid: bool, message: str)
-        """
-        count = self.driver_count
-
-        min_drivers = self.championship.min_drivers_per_team or 1
-        max_drivers = self.championship.max_drivers_per_team
-
-        if count < min_drivers:
-            return False, f"Need at least {min_drivers} driver(s)"
-
-        if max_drivers and count > max_drivers:
-            return False, f"Cannot exceed {max_drivers} driver(s)"
-
-        return True, "Valid"
-
-    def can_add_driver(self):
-        """
-        Check if team can add more drivers.
-
-        Returns:
-            tuple: (can_add: bool, message: str)
-        """
-        max_drivers = self.championship.max_drivers_per_team
-
-        if max_drivers is None:
-            return True, "No limit"
-
-        if self.driver_count >= max_drivers:
-            return False, f"Maximum {max_drivers} driver(s) reached"
-
-        return True, "Can add driver"
-
-    def clean(self):
-        """Validate team has correct number of drivers before saving."""
-        is_valid, message = self.is_valid_driver_count
-
-        # Only validate if team already exists (has drivers)
-        if self.pk and not is_valid:
-            raise ValidationError({"drivers": message})
-
-
 class Driver(models.Model):
     """
     Represents a driver participating in a championship.
@@ -266,7 +170,7 @@ class Driver(models.Model):
 
     # Team reference (optional - only for team championship)
     team = models.ForeignKey(
-        Team,
+        "Team",
         on_delete=models.CASCADE,
         related_name="members",
         null=True,
@@ -364,7 +268,7 @@ class Standing(models.Model):
     )
 
     team = models.ForeignKey(
-        Team,
+        "Team",
         on_delete=models.CASCADE,
         related_name="standings",
         null=True,

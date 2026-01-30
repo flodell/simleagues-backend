@@ -3,7 +3,7 @@ from django.db import models
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 
-from core.models.championship import Championship, Driver, Team
+from core.models.championship import Championship, Driver
 from core.models.choices import RaceVisibility, RaceStatus, ParticipantType
 from core.models.league import League
 from core.models.track import Track
@@ -340,7 +340,7 @@ class RaceResult(models.Model):
 
     # Team (for TEAM championship only)
     team = models.ForeignKey(
-        Team,
+        "Team",
         on_delete=models.CASCADE,
         related_name="team_race_results",
         null=True,

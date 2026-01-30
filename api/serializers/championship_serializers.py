@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
-from core.models import LeagueMembership
-from core.models.championship import Championship, Team, Driver, Standing
+from core.models import LeagueMembership, Team
+from core.models.championship import Championship, Driver, Standing
 from core.models.choices import ParticipantType, LeagueMemberRole
 
 
@@ -48,7 +48,7 @@ class TeamCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating a team in a championship"""
 
     class Meta:
-        model = Team
+        model = "Team"
         fields = ["id", "championship", "owner", "name", "racing_number", "car"]
         read_only_fields = ["id"]
 
