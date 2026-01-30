@@ -5,7 +5,9 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 
-from api.permissions import IsLeagueAdmin, IsLeagueStaff
+from api.serializers.championship_serializers import ChampionshipListSerializer
+from core.mixins import LeaguePermissionMixin
+from core.permissions import IsLeagueAdmin, IsLeagueStaff
 from api.serializers.league_serializers import (
     LeagueCreateSerializer,
     LeagueDetailSerializer,
@@ -16,7 +18,7 @@ from core.models.choices import LeagueVisibility, LeagueMemberRole
 from core.models.league import League, LeagueMembership
 
 
-class LeagueViewSet(viewsets.ModelViewSet):
+class LeagueViewSet(LeaguePermissionMixin, viewsets.ModelViewSet):
     filter_backends = [
         DjangoFilterBackend,
         filters.SearchFilter,
@@ -26,9 +28,7 @@ class LeagueViewSet(viewsets.ModelViewSet):
     search_fields = ["name", "game__name"]
     ordering_fields = ["created_at", "name", "member_count"]
     ordering = ["-created_at"]
-    permission_classes = [AllowAny]
 
-    # Groupes d’actions
     AUTH_ONLY_ACTIONS = frozenset(["create", "join", "leave"])
     STAFF_ACTIONS = frozenset(["update", "partial_update", "kick"])
     ADMIN_ACTIONS = frozenset(["destroy", "archive", "restore", "promote"])
@@ -50,24 +50,16 @@ class LeagueViewSet(viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         """Return appropriate serializer based on action"""
-        if self.action == "create":
-            return LeagueCreateSerializer
-        elif self.action == "retrieve":
-            return LeagueDetailSerializer
-        return LeagueListSerializer
+        serializer_map = {
+            "create": LeagueCreateSerializer,
+            "retrieve": LeagueDetailSerializer,
+        }
+        return serializer_map.get(self.action, LeagueListSerializer)
 
     def get_permissions(self):
-        """Set permissions based on action"""
-        if self.action in self.ADMIN_ACTIONS:
-            perms = [IsAuthenticated, IsLeagueAdmin]
-        elif self.action in self.STAFF_ACTIONS:
-            perms = [IsAuthenticated, IsLeagueStaff]
-        elif self.action in self.AUTH_ONLY_ACTIONS:
-            perms = [IsAuthenticated]
-            # Public
-        else:
-            perms = [AllowAny]
-        return [p() for p in perms]
+        if self.action == "create":
+            return [IsAuthenticated()]
+        return super().get_permissions()
 
     def perform_create(self, serializer):
         """
@@ -398,8 +390,8 @@ class LeagueViewSet(viewsets.ModelViewSet):
         league = self.get_object()
         championships = league.championships.all()
 
-        # serializer = ChampionshipListSerializer(championships, many=True)
-        return Response({"message": "Championship list endpoint - to be implemented"})
+        serializer = ChampionshipListSerializer(championships, many=True)
+        return Response(serializer.data)
 
     @action(detail=True, methods=["post"])
     def archive(self, request, pk=None):

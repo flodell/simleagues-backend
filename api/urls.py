@@ -10,9 +10,11 @@ from api.views.auth_views import (
     UpdateUserPasswordView,
 )
 from api.views.league_views import LeagueViewSet
+from api.views.championship_views import ChampionshipViewSet
 
 router = DefaultRouter()
 router.register(r"leagues", LeagueViewSet, basename="league")
+router.register(r"championships", ChampionshipViewSet, basename="championship")
 
 urlpatterns = [
     path("auth/register/", RegisterView.as_view(), name="register"),

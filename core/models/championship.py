@@ -123,24 +123,9 @@ class Championship(models.Model):
                 )
 
     @property
-    def race_count(self):
-        """Get total number of races."""
-        return self.races.count()
-
-    @property
     def completed_race_count(self):
         """Get number of completed races."""
         return self.races.filter(status="COMPLETED").count()
-
-    @property
-    def participant_count(self):
-        return self.participants.count()
-
-    @property
-    def team_count(self):
-        if self.participant_type == ParticipantType.TEAM:
-            return self.teams.count()
-        return 0
 
     def get_default_point_system(self):
         """
@@ -174,6 +159,13 @@ class Team(models.Model):
         Championship,
         on_delete=models.CASCADE,
         related_name="teams",
+    )
+
+    owner = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="owned_teams",
+        help_text="User who created and owns this team",
     )
 
     # Team Information
