@@ -54,7 +54,6 @@ class ChampionshipViewSet(LeaguePermissionMixin, viewsets.ModelViewSet):
         user = self.request.user
         queryset = Championship.objects.select_related("league").annotate(
             participant_count=Count("participants", distinct=True),
-            team_count=Count("teams", distinct=True),
             race_count=Count("races", distinct=True),
         )
 

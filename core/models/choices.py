@@ -60,6 +60,7 @@ class ChampionshipStatus(models.TextChoices):
 
 # PARTICIPANT CHOICES
 
+
 class ParticipantType(models.TextChoices):
     TEAM = "TEAM", "Team"
     INDIVIDUAL = "INDIVIDUAL", "Individual"
@@ -67,16 +68,19 @@ class ParticipantType(models.TextChoices):
 
 # TEAM CHOICES
 
+
 class TeamRole(models.TextChoices):
     OWNER = "OWNER", "Owner"
     MANAGER = "MANAGER", "Manager"
     DRIVER = "DRIVER", "Driver"
     RESERVE = "RESERVE", "Reserve"
 
+
 class TeamJoinRequestStatus(models.TextChoices):
     PENDING = "PENDING", "Pending"
     APPROVED = "APPROVED", "Approved"
     REJECTED = "REJECTED", "Rejected"
+
 
 class LeagueTeamRegistrationStatus(models.TextChoices):
     PENDING = "PENDING", "Pending"

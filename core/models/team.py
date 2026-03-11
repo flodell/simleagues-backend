@@ -1,11 +1,16 @@
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, transaction
 
 from core.models import League
-from core.models.choices import TeamRole, TeamJoinRequestStatus, LeagueTeamRegistrationStatus
+from core.models.choices import (
+    TeamRole,
+    TeamJoinRequestStatus,
+    LeagueTeamRegistrationStatus,
+)
 
 User = get_user_model()
+
 
 class Team(models.Model):
     """
@@ -14,13 +19,6 @@ class Team(models.Model):
     Teams exist globally and are not tied to a specific league or championship.
     They can register in multiple leagues and participate in various events.
     """
-
-    owner = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name="owned_teams",
-        help_text="User who created and owns this team",
-    )
 
     # Team Information
     name = models.CharField(
@@ -43,7 +41,6 @@ class Team(models.Model):
         verbose_name_plural = "Teams"
         ordering = ("name",)
 
-
     def __str__(self):
         return self.name
 
@@ -57,6 +54,23 @@ class Team(models.Model):
         if errors:
             raise ValidationError(errors)
 
+    @transaction.atomic
+    def transfer_ownership(self, new_owner):
+        try:
+            new_owner_membership = self.memberships.get(user=new_owner, is_active=True)
+        except TeamMembership.DoesNotExist:
+            raise ValueError(f"{new_owner.username} is not a member of this team")
+
+        old_owner_membership = self.memberships.get(role="owner", is_active=True)
+        old_owner_membership.role = TeamRole.MANAGER
+        old_owner_membership.save()
+
+        # Nouveau owner
+        new_owner_membership.role = TeamRole.OWNER
+        new_owner_membership.save()
+
+        return new_owner_membership
+
 
 class TeamMembership(models.Model):
     """
@@ -69,8 +83,18 @@ class TeamMembership(models.Model):
     - reserve: Reserve/backup driver
     """
 
-    team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="memberships", help_text="Team this membership belongs to")
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="team_memberships", help_text="User who is a member of this team")
+    team = models.ForeignKey(
+        Team,
+        on_delete=models.CASCADE,
+        related_name="memberships",
+        help_text="Team this membership belongs to",
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="team_memberships",
+        help_text="User who is a member of this team",
+    )
     role = models.CharField(max_length=20, choices=TeamRole)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -79,13 +103,20 @@ class TeamMembership(models.Model):
         verbose_name = "TeamMembership"
         verbose_name_plural = "TeamMemberships"
         unique_together = ("team", "user")
-        ordering = ("team", "created_at",)
+        ordering = (
+            "team",
+            "created_at",
+        )
 
     def clean(self):
         errors = {}
 
         if self.role == TeamRole.OWNER:
-            existing_owner = TeamMembership.objects.filter(team=self.team, role=TeamRole.OWNER).exclude(pk=self.pk).exists()
+            existing_owner = (
+                TeamMembership.objects.filter(team=self.team, role=TeamRole.OWNER)
+                .exclude(pk=self.pk)
+                .exists()
+            )
             if existing_owner:
                 f"Team already has an owner: {existing_owner.user.username}."
         if errors:
@@ -99,19 +130,36 @@ class TeamJoinRequest(models.Model):
     Users can request to join teams, and team owners/managers can approve or reject.
     """
 
-    team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="join_requests", help_text="Team join request")
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="team_join_requests", help_text="User join request")
-    message = models.TextField(blank=True, help_text="Optional message from the user explaining why they want to join")
+    team = models.ForeignKey(
+        Team,
+        on_delete=models.CASCADE,
+        related_name="join_requests",
+        help_text="Team join request",
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="team_join_requests",
+        help_text="User join request",
+    )
+    message = models.TextField(
+        blank=True,
+        help_text="Optional message from the user explaining why they want to join",
+    )
 
-    status = models.CharField(max_length=20, choices=TeamJoinRequestStatus.choices, default=TeamJoinRequestStatus.PENDING)
+    status = models.CharField(
+        max_length=20,
+        choices=TeamJoinRequestStatus.choices,
+        default=TeamJoinRequestStatus.PENDING,
+    )
 
     resolved_by = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='resolved_team_requests',
-        help_text="Owner/manager who accepted or rejected the request"
+        related_name="resolved_team_requests",
+        help_text="Owner/manager who accepted or rejected the request",
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -120,7 +168,10 @@ class TeamJoinRequest(models.Model):
     class Meta:
         verbose_name = "TeamJoinRequest"
         verbose_name_plural = "TeamJoinRequests"
-        ordering = ("team", "created_at",)
+        ordering = (
+            "team",
+            "created_at",
+        )
         constraints = [
             models.UniqueConstraint(
                 fields=["team", "user"],
@@ -132,13 +183,14 @@ class TeamJoinRequest(models.Model):
     def __str__(self):
         return f"{self.user.username} → {self.team.name} ({self.get_status_display()})"
 
-
     def clean(self):
         errors = {}
 
         if TeamMembership.objects.filter(team=self.team, user=self.user).exists():
-            errors["user"] = f"{self.user.username} is already a member of {self.team.name}."
-        if self.status == 'pending':
+            errors["user"] = (
+                f"{self.user.username} is already a member of {self.team.name}."
+            )
+        if self.status == "pending":
             existing = TeamJoinRequest.objects.filter(
                 team=self.team,
                 user=self.user,
@@ -146,12 +198,9 @@ class TeamJoinRequest(models.Model):
             ).exclude(pk=self.pk)
 
             if existing.exists():
-                errors['user'] = (
-                    "You already have a pending request to join this team."
-                )
+                errors["user"] = "You already have a pending request to join this team."
         if errors:
             raise ValidationError(errors)
-
 
     def accept(self, resolved_by, role=TeamRole.DRIVER):
         """
@@ -207,23 +256,26 @@ class LeagueTeamRegistration(models.Model):
         Team,
         on_delete=models.CASCADE,
         related_name="league_registrations",
-        help_text="Team registration")
+        help_text="Team registration",
+    )
 
     status = models.CharField(
         max_length=20,
         choices=LeagueTeamRegistrationStatus.choices,
         default=LeagueTeamRegistrationStatus.PENDING,
-        help_text="Team registration status"
+        help_text="Team registration status",
     )
     resolved_by = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='resolved_team_registrations',
+        related_name="resolved_team_registrations",
     )
 
-    ban_reason = models.TextField(blank=True, help_text="Banned reason (if status is banned")
+    ban_reason = models.TextField(
+        blank=True, help_text="Banned reason (if status is banned"
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -240,12 +292,13 @@ class LeagueTeamRegistration(models.Model):
     def clean(self):
         errors = {}
         # Cannot register if league is not active
-        if hasattr(self, 'league') and not self.league.is_active:
-            errors['league'] = f"League {self.league.name} is not accepting registration"
+        if hasattr(self, "league") and not self.league.is_active:
+            errors["league"] = (
+                f"League {self.league.name} is not accepting registration"
+            )
 
         if errors:
             raise ValidationError(errors)
-
 
     def accept(self, resolved_by):
         if self.status == LeagueTeamRegistrationStatus.BANNED:

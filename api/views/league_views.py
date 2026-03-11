@@ -61,17 +61,6 @@ class LeagueViewSet(LeaguePermissionMixin, viewsets.ModelViewSet):
             return [IsAuthenticated()]
         return super().get_permissions()
 
-    def perform_create(self, serializer):
-        """
-        Create league and automatically add creator as admin.
-        """
-        league = serializer.save(creator=self.request.user)
-        LeagueMembership.objects.create(
-            league=league,
-            user=self.request.user,
-            role=LeagueMemberRole.ADMIN,
-        )
-
     def destroy(self, request, pk=None, **kwargs):
         """
         Soft delete a league by default (archive it).
@@ -281,7 +270,7 @@ class LeagueViewSet(LeaguePermissionMixin, viewsets.ModelViewSet):
             if membership.role == LeagueMemberRole.ADMIN:
                 return Response(
                     {"detail": "Cannot kick the league admin."},
-                    status=status.HTTP_400_BAD_REQUEST,
+                    status=status.HTTP_403_FORBIDDEN,
                 )
 
             membership.delete()

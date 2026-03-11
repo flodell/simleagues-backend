@@ -35,36 +35,40 @@ class LeagueAPITestCase(APITestCase):
             name="ACC League",
             game=self.acc,
             description="ACC racing league",
-            creator=self.user1,
             visibility=LeagueVisibility.PUBLIC,
-            is_active=True,
         )
+        # Create admin membership for league1
         LeagueMembership.objects.create(
-            league=self.league1, user=self.user1, role=LeagueMemberRole.ADMIN
+            league=self.league1,
+            user=self.user1,
+            role=LeagueMemberRole.ADMIN,
         )
 
         self.league2 = League.objects.create(
             name="LMU League",
             game=self.lmu,
             description="LMU racing league",
-            creator=self.user2,
             visibility=LeagueVisibility.PUBLIC,
-            is_active=True,
         )
+        # Create admin membership for league2
         LeagueMembership.objects.create(
-            league=self.league2, user=self.user2, role=LeagueMemberRole.ADMIN
+            league=self.league2,
+            user=self.user1,
+            role=LeagueMemberRole.ADMIN,
         )
 
         self.inactive_league = League.objects.create(
             name="Old League",
             game=self.lmu,
             description="Inactive league",
-            creator=self.user1,
             visibility=LeagueVisibility.PUBLIC,
             is_active=False,
         )
+        # Create admin membership for inactive_league
         LeagueMembership.objects.create(
-            league=self.inactive_league, user=self.user1, role=LeagueMemberRole.ADMIN
+            league=self.inactive_league,
+            user=self.user1,
+            role=LeagueMemberRole.ADMIN,
         )
 
         # Create an INVITE_ONLY league
@@ -72,12 +76,13 @@ class LeagueAPITestCase(APITestCase):
             name="Private Club",
             game=self.acc,
             description="Invite only league",
-            creator=self.user1,
             visibility=LeagueVisibility.INVITE_ONLY,
-            is_active=True,
         )
+        # Create admin membership for invite_only_league
         LeagueMembership.objects.create(
-            league=self.invite_only_league, user=self.user1, role=LeagueMemberRole.ADMIN
+            league=self.invite_only_league,
+            user=self.user2,
+            role=LeagueMemberRole.ADMIN,
         )
 
     # ===== LIST TESTS =====
@@ -103,7 +108,7 @@ class LeagueAPITestCase(APITestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        # Should see: ACC League, LMU League
+        # Should see: ACC League, LMU League, Private Club (user2 is admin)
         self.assertEqual(response.data["count"], 3)
 
     def test_filter_leagues_by_game(self):
@@ -138,7 +143,7 @@ class LeagueAPITestCase(APITestCase):
 
     def test_retrieve_nonexistent_league(self):
         """Test retrieving a league that doesn't exist"""
-        url = reverse("league-detail", kwargs={"pk": -1})
+        url = reverse("league-detail", kwargs={"pk": 9999})
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
@@ -152,7 +157,7 @@ class LeagueAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["user_role"], LeagueMemberRole.ADMIN)
 
-        # ===== CREATE TESTS =====
+    # ===== CREATE TESTS =====
 
     def test_create_league_unauthenticated(self):
         """Test that unauthenticated users cannot create leagues"""
@@ -172,7 +177,7 @@ class LeagueAPITestCase(APITestCase):
         self.client.force_authenticate(user=self.user3)
         url = reverse("league-list")
         data = {
-            "name": "New League",
+            "name": "New League Test",
             "description": "Test league",
             "visibility": LeagueVisibility.PUBLIC,
             "game": self.lmu.id,
@@ -180,7 +185,7 @@ class LeagueAPITestCase(APITestCase):
         response = self.client.post(url, data)
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data["name"], "New League")
+        self.assertEqual(response.data["name"], "New League Test")
 
         # Verify creator was added as admin
         league = League.objects.get(pk=response.data["id"])
@@ -274,11 +279,8 @@ class LeagueAPITestCase(APITestCase):
 
     def test_delete_already_archived_league(self):
         """Test that archiving an already archived league fails"""
-        self.league1.is_active = False
-        self.league1.save()
-
         self.client.force_authenticate(user=self.user1)
-        url = reverse("league-detail", kwargs={"pk": self.league1.pk})
+        url = reverse("league-detail", kwargs={"pk": self.inactive_league.pk})
         response = self.client.delete(url)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -366,7 +368,7 @@ class LeagueAPITestCase(APITestCase):
 
     def test_archive_already_archived_league(self):
         """Test that archiving an already archived league fails"""
-        self.client.force_authenticate(user=self.inactive_league.creator)
+        self.client.force_authenticate(user=self.user1)
         url = reverse("league-archive", kwargs={"pk": self.inactive_league.pk})
         response = self.client.post(url)
 
@@ -424,7 +426,7 @@ class LeagueAPITestCase(APITestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        # Should see: ACC League, LMU League, Old League (archived, member), Private Club
+        # user1 is admin of: ACC League, LMU League, Old League (archived)
         league_names = [league["name"] for league in response.data["results"]]
         self.assertIn("Old League", league_names)
 
@@ -520,8 +522,6 @@ class LeagueAPITestCase(APITestCase):
 
     def test_cannot_join_archived_league(self):
         """Test that users cannot join archived leagues"""
-        self.assertFalse(self.inactive_league.is_member(self.user3))
-
         self.client.force_authenticate(user=self.user3)
         url = reverse("league-join", kwargs={"pk": self.inactive_league.pk})
         response = self.client.post(url)
@@ -588,9 +588,14 @@ class LeagueAPITestCase(APITestCase):
 
     def test_kick_admin(self):
         """Test that admins cannot be kicked"""
-        self.client.force_authenticate(user=self.user2)
+        # Add user2 as admin
+        LeagueMembership.objects.create(
+            league=self.league1, user=self.user2, role=LeagueMemberRole.ADMIN
+        )
+
+        self.client.force_authenticate(user=self.user1)
         url = reverse("league-kick", kwargs={"pk": self.league1.pk})
-        data = {"user_id": self.user1.id}
+        data = {"user_id": self.user2.id}
         response = self.client.post(url, data)
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
@@ -770,7 +775,9 @@ class LeagueAPITestCase(APITestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 3)  # admin, moderator, member
+        self.assertEqual(
+            len(response.data), 3
+        )  # admin (user1), moderator (user2), member (user3)
 
         # Check order: admin first
         self.assertEqual(response.data[0]["role"], LeagueMemberRole.ADMIN)
@@ -781,4 +788,4 @@ class LeagueAPITestCase(APITestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
+        self.assertEqual(len(response.data), 1)  # Only admin (user1)

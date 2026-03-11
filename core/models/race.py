@@ -198,11 +198,6 @@ class Race(models.Model):
                 )
 
     @property
-    def is_league_race(self):
-        """Check if race belongs to a league."""
-        return self.league is not None
-
-    @property
     def is_championship_race(self):
         """Check if race is part of a championship."""
         return self.championship is not None
@@ -211,21 +206,6 @@ class Race(models.Model):
     def is_independent(self):
         """Check if race is independent (no league, no championship)."""
         return self.league is None and self.championship is None
-
-    @property
-    def result_count(self):
-        """Get number of results entered for this race."""
-        return self.results.count()
-
-    @property
-    def is_completed(self):
-        """Check if race is completed."""
-        return self.status == RaceStatus.COMPLETED
-
-    @property
-    def has_results(self):
-        """Check if race has any results."""
-        return self.results.exists()
 
     def can_user_view(self, user):
         """
@@ -295,24 +275,6 @@ class Race(models.Model):
 
         # For independent races, anyone can participate
         return True
-
-    def get_winner(self):
-        """
-        Get the winner of the race (position 1).
-
-        Returns:
-            RaceResult or None
-        """
-        return self.results.filter(position=1).first()
-
-    def get_podium(self):
-        """
-        Get the podium finishers (positions 1-3).
-
-        Returns:
-            QuerySet of RaceResult
-        """
-        return self.results.filter(position__lte=3).order_by("position")
 
 
 class RaceResult(models.Model):

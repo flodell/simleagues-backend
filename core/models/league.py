@@ -28,14 +28,6 @@ class League(models.Model):
 
     description = models.TextField(blank=True, help_text="League description and rules")
 
-    # Creator
-    creator = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name="created_leagues",
-        help_text="User who created this league",
-    )
-
     # Visibility and Access Control
     visibility = models.CharField(
         max_length=20,
@@ -112,7 +104,6 @@ class League(models.Model):
         return self.memberships.filter(
             user=user, role__in=[LeagueMemberRole.ADMIN, LeagueMemberRole.MODERATOR]
         ).exists()
-
 
 
 class LeagueMembership(models.Model):

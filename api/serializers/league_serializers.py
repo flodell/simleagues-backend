@@ -1,5 +1,7 @@
+from django.db import transaction
 from rest_framework import serializers
 
+from core.models.choices import LeagueMemberRole
 from core.models.league import LeagueMembership, League
 
 
@@ -98,3 +100,16 @@ class LeagueCreateSerializer(serializers.ModelSerializer):
         if not value:
             raise serializers.ValidationError("Game is required.")
         return value
+
+    @transaction.atomic
+    def create(self, validated_data):
+        user = self.context["request"].user
+
+        league = League.objects.create(**validated_data)
+
+        LeagueMembership.objects.get_or_create(
+            league=league,
+            user=user,
+            role=LeagueMemberRole.ADMIN,
+        )
+        return league
