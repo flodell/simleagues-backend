@@ -27,6 +27,7 @@ class Team(models.Model):
     )
     logo = models.ImageField(upload_to="team_logo/", null=True, blank=True)
     description = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
 
     total_races = models.PositiveIntegerField(default=0)
     total_wins = models.PositiveIntegerField(default=0)
@@ -98,6 +99,7 @@ class TeamMembership(models.Model):
     role = models.CharField(max_length=20, choices=TeamRole)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
 
     class Meta:
         verbose_name = "TeamMembership"
