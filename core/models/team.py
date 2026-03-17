@@ -242,7 +242,7 @@ class TeamJoinRequest(models.Model):
         self.status = TeamJoinRequestStatus.REJECTED
         self.resolved_by = resolved_by
         self.save()
-        pass
+
 
 
 class LeagueTeamRegistration(models.Model):
