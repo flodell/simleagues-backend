@@ -257,6 +257,13 @@ class TeamViewSet(viewsets.ModelViewSet):
         user_id = request.data.get("user_id")
         new_role = request.data.get("role")
 
+        VALID_ROLES = frozenset({TeamRole.MANAGER, TeamRole.DRIVER, TeamRole.RESERVE})
+
+        if new_role not in VALID_ROLES:
+            return Response(
+                {"detail": "Invalid role."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         if new_role == TeamRole.OWNER:
             return Response(
                 {"detail": "Use transfer_ownership to assign the owner role."},
