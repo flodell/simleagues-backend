@@ -19,14 +19,13 @@ class StandingCalculator:
             results = RaceResult.objects.filter(
                 race__championship=standing.championship,
                 race__status=RaceStatus.COMPLETED,
-                user=standing.driver.user,
-                team__isnull=True,  # Ensure it's an individual result
+                race_entry__championship_entry=standing.participant,
             )
         else:
             results = RaceResult.objects.filter(
                 race__championship=standing.championship,
                 race__status=RaceStatus.COMPLETED,
-                team=standing.team,
+                race_entry__championship_entry__team=standing.team,
             )
 
         # Aggregate points and stats

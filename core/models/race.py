@@ -3,9 +3,11 @@ from django.db import models
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 
-from core.models.championship import Championship, Driver
-from core.models.choices import RaceVisibility, RaceStatus, ParticipantType
+from core.models import Car
+from core.models.championship import Championship, ChampionshipEntry
+from core.models.choices import RaceVisibility, RaceStatus, ParticipantType, RaceEntryStatus
 from core.models.league import League
+from core.models.team import TeamMembership
 from core.models.track import Track
 
 User = get_user_model()
@@ -110,9 +112,9 @@ class Race(models.Model):
         default=RaceStatus.SCHEDULED,
     )
 
-    # Results entry tracking
+    # User who entered the results
     entered_by = models.ForeignKey(
-        Driver,
+        User,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -236,15 +238,6 @@ class Race(models.Model):
         return False
 
     def can_user_enter_results(self, user):
-        """
-        Check if user can enter results for this race.
-
-        Args:
-            user: User to check
-
-        Returns:
-            bool: True if user can enter results
-        """
         # Creator can always enter
         if self.creator == user:
             return True
@@ -256,18 +249,18 @@ class Race(models.Model):
         return False
 
     def can_user_participate(self, user):
-        """
-        Check if user can participate in this race.
 
-        Args:
-            user: User to check
-
-        Returns:
-            bool: True if user can participate
-        """
         # For championship races, must be registered participant
         if self.championship:
-            return self.championship.participants.filter(driver=user).exists()
+            # Must have an approved RaceEntry linked to a ChampionshipEntry for this user
+            return self.entries.filter(
+                championship_entry__user=user,
+                status=RaceEntryStatus.APPROVED,
+            ).exists() or self.entries.filter(
+                championship_entry__team__memberships__user=user,
+                championship_entry__team__memberships__is_active=True,
+                status=RaceEntryStatus.APPROVED,
+            ).exists()
 
         # For league races, must be league member
         if self.league:
@@ -275,6 +268,202 @@ class Race(models.Model):
 
         # For independent races, anyone can participate
         return True
+
+
+
+class RaceEntry(models.Model):
+    """
+    Represents a participant's entry in a specific race.
+
+    Can be:
+    - Linked to a ChampionshipEntry (championship race)
+    - Standalone (no championship) with team or user directly
+    """
+
+    race = models.ForeignKey(
+        Race,
+        on_delete=models.CASCADE,
+        related_name="entries",
+    )
+
+    # Championship context (optional)
+    championship_entry = models.ForeignKey(
+        ChampionshipEntry,
+        on_delete=models.CASCADE,
+        related_name="race_entries",
+        null=True,
+        blank=True,
+    )
+
+    # Standalone context (mutually exclusive with championship_entry)
+    team = models.ForeignKey(
+        "Team",
+        on_delete=models.CASCADE,
+        related_name="race_entries",
+        null=True,
+        blank=True,
+    )
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="race_entries",
+        null=True,
+        blank=True,
+    )
+
+    # Required for standalone, inherited from ChampionshipEntry otherwise
+    car = models.ForeignKey(
+        Car,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+    )
+    racing_number = models.IntegerField(null=True, blank=True)
+
+    status = models.CharField(
+        max_length=20,
+        choices=RaceEntryStatus.choices,
+        default=RaceEntryStatus.PENDING,
+    )
+
+    resolved_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="resolved_race_entries",
+    )
+
+    ban_reason = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "RaceEntry"
+        verbose_name_plural = "RaceEntries"
+        ordering = ["racing_number"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["race", "championship_entry"],
+                condition=models.Q(championship_entry__isnull=False),
+                name="unique_championship_entry_per_race",
+            ),
+            models.UniqueConstraint(
+                fields=["race", "team"],
+                condition=models.Q(team__isnull=False, championship_entry__isnull=True),
+                name="unique_team_per_standalone_race",
+            ),
+            models.UniqueConstraint(
+                fields=["race", "user"],
+                condition=models.Q(user__isnull=False, championship_entry__isnull=True),
+                name="unique_user_per_standalone_race",
+            ),
+        ]
+
+    def clean(self):
+        errors = {}
+
+        if self.championship_entry:
+            # Championship context — team/user/car/racing_number not needed
+            if self.team or self.user:
+                errors["team"] = "Cannot specify team or user when championship_entry is set."
+            if self.car or self.racing_number:
+                errors["car"] = "Cannot specify car or racing_number when championship_entry is set."
+        else:
+            # Standalone context
+            if self.team and self.user:
+                errors["team"] = "Cannot have both team and user."
+            if not self.team and not self.user:
+                errors["team"] = "Must specify either team, user, or championship_entry."
+            if not self.car:
+                errors["car"] = "Car is required for standalone race entries."
+            if not self.racing_number:
+                errors["racing_number"] = "Racing number is required for standalone race entries."
+
+        if errors:
+            raise ValidationError(errors)
+
+    def accept(self, resolved_by):
+        if self.status == RaceEntryStatus.BANNED:
+            raise ValidationError("Cannot accept a banned entry.")
+        self.status = RaceEntryStatus.APPROVED
+        self.resolved_by = resolved_by
+        self.save()
+
+    def reject(self, resolved_by):
+        if self.status == RaceEntryStatus.BANNED:
+            raise ValidationError("Cannot reject a banned entry.")
+        self.status = RaceEntryStatus.REJECTED
+        self.resolved_by = resolved_by
+        self.save()
+
+    def ban(self, reason=""):
+        self.status = RaceEntryStatus.BANNED
+        self.ban_reason = reason
+        self.save()
+
+class RaceLineup(models.Model):
+    """
+    Represents a driver's lineup for a team race entry.
+
+    Only used for team races (championship or standalone).
+    Driver must be an active member of the team.
+    """
+
+    race = models.ForeignKey(
+        Race,
+        on_delete=models.CASCADE,
+        related_name="lineups",
+    )
+
+    race_entry = models.ForeignKey(
+        RaceEntry,
+        on_delete=models.CASCADE,
+        related_name="lineups",
+    )
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="race_lineups",
+    )
+
+    # Driver category (e.g., Pro, Am, Silver, Gold)
+    role = models.CharField(max_length=100, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "RaceLineup"
+        verbose_name_plural = "RaceLineups"
+        unique_together = [["race", "user"]]
+        ordering = ["race"]
+
+
+    def clean(self):
+        errors = {}
+
+        # RaceEntry must have a team
+        team = None
+        if self.race_entry.championship_entry:
+            team = self.race_entry.championship_entry.team
+        else:
+            team = self.race_entry.team
+
+        if not team:
+            errors["race_entry"] = "RaceLineup can only be used for team race entries."
+
+        # Driver must be active member of the team
+        if team and not TeamMembership.objects.filter(
+            team=team, user=self.user, is_active=True
+        ).exists():
+            errors["user"] = f"{self.user.username} is not an active member of {team.name}."
+
+        if errors:
+            raise ValidationError(errors)
 
 
 class RaceResult(models.Model):
@@ -292,22 +481,10 @@ class RaceResult(models.Model):
         help_text="Race this result belongs to",
     )
 
-    # Driver reference (always required)
-    driver = models.ForeignKey(
-        Driver,
+    race_entry = models.ForeignKey(
+        RaceEntry,
         on_delete=models.CASCADE,
-        related_name="race_results",
-        help_text="Driver who achieved this result",
-    )
-
-    # Team (for TEAM championship only)
-    team = models.ForeignKey(
-        "Team",
-        on_delete=models.CASCADE,
-        related_name="team_race_results",
-        null=True,
-        blank=True,
-        help_text="Team this result belongs to (only for TEAM championship)",
+        related_name="results",
     )
 
     # Result data
@@ -359,51 +536,19 @@ class RaceResult(models.Model):
             ),
             # Driver must be unique per race
             models.UniqueConstraint(
-                fields=["race", "driver"], name="unique_driver_per_race"
-            ),
-            # For TEAM: team unique per race
-            models.UniqueConstraint(
-                fields=["race", "team"],
-                condition=models.Q(team__isnull=False),
-                name="unique_team_per_race",
+                fields=["race", "race_entry"], name="unique_driver_per_race"
             ),
         ]
 
     def clean(self):
+        errors = {}
 
-        # DNF and DSQ cannot both be true
         if self.dnf and self.dsq:
-            raise ValidationError(
-                {
-                    "dnf": "Cannot be both DNF and DSQ.",
-                    "dsq": "Cannot be both DNF and DSQ.",
-                }
-            )
+            errors["dnf"] = "Cannot be both DNF and DSQ."
 
-        # For championship races: driver must be registered participant
-        if self.race.is_championship_race:
-            if self.race.championship.participant_type == ParticipantType.TEAM:
-                # Must have team
-                if not self.team:
-                    raise ValidationError(
-                        {"team": "Team is required for team championship races."}
-                    )
+        # RaceEntry must belong to this race
+        if self.race_entry.race != self.race:
+            errors["race_entry"] = "RaceEntry does not belong to this race."
 
-                # User must be member of the team
-                if not self.team.members.filter(driver=self.driver).exists():
-                    raise ValidationError(
-                        {"driver": "Driver must be a member of the specified team."}
-                    )
-
-            else:
-                # INDIVIDUAL Must NOT have team
-                if self.team:
-                    raise ValidationError(
-                        {"team": "Individual championship races cannot have teams."}
-                    )
-        # For league races: driver must be league member
-        if self.race.league:
-            if not self.race.league.is_member(self.driver):
-                raise ValidationError(
-                    {"driver": "Driver must be a member of the league."}
-                )
+        if errors:
+            raise ValidationError(errors)

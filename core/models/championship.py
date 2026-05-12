@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 
 from core.models.car import Car
-from core.models.choices import ParticipantType, ChampionshipStatus
+from core.models.choices import ParticipantType, ChampionshipStatus, ChampionshipEntryStatus
 
 User = get_user_model()
 
@@ -148,98 +148,126 @@ class Championship(models.Model):
         }
 
 
-class Driver(models.Model):
+class ChampionshipEntry(models.Model):
     """
-    Represents a driver participating in a championship.
+    Represents a participant's entry in a championship.
 
-    Can be either:
-    - Individual driver (team=None)
-    - Team member (team=Team)
+    - TEAM championship: one entry per team, drivers managed via RaceLineup
+    - INDIVIDUAL championship: one entry per driver
     """
 
     championship = models.ForeignKey(
         Championship,
         on_delete=models.CASCADE,
-        related_name="participants",
-        help_text="Championship this participant is registered in",
+        related_name="entries",
     )
 
     user = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="participations"
+        User,
+        on_delete=models.CASCADE,
+        related_name="championship_entries",
+        null=True,
+        blank=True,
     )
 
     # Team reference (optional - only for team championship)
     team = models.ForeignKey(
         "Team",
         on_delete=models.CASCADE,
-        related_name="members",
+        related_name="championship_entries",
         null=True,
         blank=True,
-        help_text="Team this driver belongs to (only for team championship)",
     )
 
     car = models.ForeignKey(
-        Car, on_delete=models.PROTECT, help_text="Car used by this driver/team"
+        Car, on_delete=models.PROTECT,
+        help_text="Car used by this driver/team"
     )
 
     racing_number = models.IntegerField(help_text="Driver or team racing number")
 
-    # Driver role (for team championship)
-    role = models.CharField(
-        max_length=100,
-        blank=True,
-        help_text="Driver role in team (e.g., 'Pro', 'Am', 'Silver', 'Gold'). Only for team championship.",
+    status = models.CharField(
+        max_length=20,
+        choices=ChampionshipEntryStatus.choices,
+        default=ChampionshipEntryStatus.PENDING,
     )
+
+    resolved_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="resolved_championship_entries",
+    )
+
+    ban_reason = models.TextField(blank=True)
+
 
     # Metadata
     joined_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = "Driver"
-        verbose_name_plural = "Drivers"
-        unique_together = [["championship", "user"], ["championship", "racing_number"]]
+        verbose_name = "ChampionshipEntry"
+        verbose_name_plural = "ChampionshipEntries"
         ordering = ["racing_number"]
-
-    def __str__(self):
-        if self.team:
-            return f"#{self.racing_number} {self.user.username} ({self.team.name})"
-        return f"#{self.racing_number} {self.user.username}"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["championship", "team"],
+                condition=models.Q(team__isnull=False),
+                name="unique_team_per_championship",
+            ),
+            models.UniqueConstraint(
+                fields=["championship", "user"],
+                condition=models.Q(user__isnull=False, team__isnull=True),
+                name="unique_user_per_championship",
+            ),
+            models.UniqueConstraint(
+                fields=["championship", "racing_number"],
+                name="unique_racing_number_per_championship",
+            ),
+        ]
 
     def clean(self):
-        """Validate participant based on championship type."""
+        errors = {}
 
-        # Team championship: must have a team
+        if self.team and self.user:
+            errors["team"] = "Cannot have both team and user."
+
+        if not self.team and not self.user:
+            errors["team"] = "Must specify either team or user."
+
         if self.championship.participant_type == ParticipantType.TEAM:
             if not self.team:
-                raise ValidationError(
-                    {"team": "Team is required for team championship."}
-                )
+                errors["team"] = "Team championship requires a team entry."
 
-            # Check if driver is already in another team in this championship
-            existing_in_other_team = Driver.objects.filter(
-                championship=self.championship, user=self.user, team__isnull=False
-            ).exclude(pk=self.pk)
-
-            if existing_in_other_team.exists():
-                other_team = existing_in_other_team.first().team
-                raise ValidationError(
-                    {
-                        "driver": f'Driver is already in team "{other_team.name}" for this championship.'
-                    }
-                )
-
-        # Individual championship: must NOT have a team
         if self.championship.participant_type == ParticipantType.INDIVIDUAL:
+            if not self.user:
+                errors["user"] = "Individual championship requires a user entry."
             if self.team:
-                raise ValidationError(
-                    {"team": "Individual championship cannot have teams."}
-                )
+                errors["team"] = "Individual championship cannot have team entries."
 
-    @property
-    def is_team_member(self):
-        return self.team is not None
+        if errors:
+            raise ValidationError(errors)
 
+    def accept(self, resolved_by):
+        if self.status == ChampionshipEntryStatus.BANNED:
+            raise ValidationError("Cannot accept a banned entry.")
+        self.status = ChampionshipEntryStatus.APPROVED
+        self.resolved_by = resolved_by
+        self.save()
+
+    def reject(self, resolved_by):
+        if self.status == ChampionshipEntryStatus.BANNED:
+            raise ValidationError("Cannot reject a banned entry.")
+        self.status = ChampionshipEntryStatus.REJECTED
+        self.resolved_by = resolved_by
+        self.save()
+
+    def ban(self, reason=""):
+        self.status = ChampionshipEntryStatus.BANNED
+        self.ban_reason = reason
+        self.save()
 
 class Standing(models.Model):
     """
@@ -258,8 +286,8 @@ class Standing(models.Model):
     )
 
     # Either driver OR team (mutually exclusive)
-    driver = models.ForeignKey(
-        Driver,
+    participant  = models.ForeignKey(
+        ChampionshipEntry,
         on_delete=models.CASCADE,
         related_name="standings",
         null=True,
@@ -320,9 +348,9 @@ class Standing(models.Model):
         constraints = [
             # For INDIVIDUAL championship: unique driver per championship
             models.UniqueConstraint(
-                fields=["championship", "driver"],
-                condition=models.Q(driver__isnull=False),
-                name="unique_driver_standing_per_championship",
+                fields=["championship", "participant"],
+                condition=models.Q(participant__isnull=False),
+                name="unique_participant_standing_per_championship",
             ),
             # For TEAM championship: unique team per championship
             models.UniqueConstraint(
@@ -333,30 +361,20 @@ class Standing(models.Model):
         ]
 
     def clean(self):
-        """Validate standing based on championship type."""
-
-        # Must have exactly one: driver OR team
-        if not self.driver and not self.team:
+        if not self.participant and not self.team:
             raise ValidationError(
-                {
-                    "driver": "Must specify either driver or team.",
-                    "team": "Must specify either driver or team.",
-                }
+                {"participant": "Must specify either participant or team."}
             )
 
-        if self.driver and self.team:
+        if self.participant and self.team:
             raise ValidationError(
-                {
-                    "driver": "Cannot have both driver and team.",
-                    "team": "Cannot have both driver and team.",
-                }
+                {"participant": "Cannot have both participant and team."}
             )
 
-        # Validate based on championship type
         if self.championship.participant_type == ParticipantType.INDIVIDUAL:
-            if not self.driver:
+            if not self.participant:
                 raise ValidationError(
-                    {"driver": "Individual championship require a driver."}
+                    {"participant": "Individual championship requires a participant."}
                 )
             if self.team:
                 raise ValidationError(
@@ -365,8 +383,8 @@ class Standing(models.Model):
 
         if self.championship.participant_type == ParticipantType.TEAM:
             if not self.team:
-                raise ValidationError({"team": "Team championship require a team."})
-            if self.driver:
+                raise ValidationError({"team": "Team championship requires a team."})
+            if self.participant:
                 raise ValidationError(
-                    {"driver": "Team championship cannot have individual drivers."}
+                    {"participant": "Team championship cannot have individual participants."}
                 )

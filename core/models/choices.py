@@ -20,6 +20,11 @@ class RaceStatus(models.TextChoices):
     COMPLETED = "COMPLETED", "Completed"
     CANCELLED = "CANCELLED", "Cancelled"
 
+class RaceEntryStatus(models.TextChoices):
+    PENDING = "PENDING", "Pending"
+    APPROVED = "APPROVED", "Approved"
+    REJECTED = "REJECTED", "Rejected"
+    BANNED = "BANNED", "Banned"
 
 class RaceVisibility(models.TextChoices):
     PUBLIC = "PUBLIC", "Public (Anyone can view)"
@@ -57,6 +62,11 @@ class ChampionshipStatus(models.TextChoices):
     COMPLETED = "COMPLETED", "Completed"
     CANCELLED = "CANCELLED", "Cancelled"
 
+class ChampionshipEntryStatus(models.TextChoices):
+    PENDING = "PENDING", "Pending"
+    APPROVED = "APPROVED", "Approved"
+    REJECTED = "REJECTED", "Rejected"
+    BANNED = "BANNED", "Banned"
 
 # PARTICIPANT CHOICES
 
