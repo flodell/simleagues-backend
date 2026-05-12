@@ -11,10 +11,12 @@ from api.views.auth_views import (
 )
 from api.views.league_views import LeagueViewSet
 from api.views.championship_views import ChampionshipViewSet
+from api.views.team_views import TeamViewSet
 
 router = DefaultRouter()
 router.register(r"leagues", LeagueViewSet, basename="league")
 router.register(r"championships", ChampionshipViewSet, basename="championship")
+router.register(r"teams", TeamViewSet, basename="team")
 
 urlpatterns = [
     path("auth/register/", RegisterView.as_view(), name="register"),

@@ -25,15 +25,18 @@ class IsLeagueMember(BasePermission):
 
 class IsTeamOwner(BasePermission):
     """Only team owner can perform this action."""
+    def has_permission(self, request, view):
+        return request.user and request.user.is_authenticated
 
     def has_object_permission(self, request, view, obj):
-        # obj is a Team
         return obj.is_owner(request.user)
 
 
 class IsTeamManager(BasePermission):
     """Team owner or manager can perform this action."""
 
+    def has_permission(self, request, view):
+        return request.user and request.user.is_authenticated
+
     def has_object_permission(self, request, view, obj):
-        # obj is a Team
         return obj.is_manager(request.user)

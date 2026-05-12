@@ -62,15 +62,23 @@ class Team(models.Model):
         except TeamMembership.DoesNotExist:
             raise ValueError(f"{new_owner.username} is not a member of this team")
 
-        old_owner_membership = self.memberships.get(role="owner", is_active=True)
+        old_owner_membership = self.memberships.get(role=TeamRole.OWNER, is_active=True)
         old_owner_membership.role = TeamRole.MANAGER
         old_owner_membership.save()
 
-        # Nouveau owner
         new_owner_membership.role = TeamRole.OWNER
         new_owner_membership.save()
 
         return new_owner_membership
+
+        # Permission checks
+
+    def is_owner(self, user):
+        return self.memberships.filter(user=user, role=TeamRole.OWNER).exists()
+
+    def is_manager(self, user):
+        return self.memberships.filter(user=user, role__in=[TeamRole.OWNER, TeamRole.MANAGER]).exists()
+
 
 
 class TeamMembership(models.Model):
@@ -123,6 +131,7 @@ class TeamMembership(models.Model):
                 f"Team already has an owner: {existing_owner.user.username}."
         if errors:
             raise ValidationError(errors)
+
 
 
 class TeamJoinRequest(models.Model):

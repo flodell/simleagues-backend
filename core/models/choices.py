@@ -80,6 +80,7 @@ class TeamJoinRequestStatus(models.TextChoices):
     PENDING = "PENDING", "Pending"
     APPROVED = "APPROVED", "Approved"
     REJECTED = "REJECTED", "Rejected"
+    CANCELLED = "CANCELLED", "Cancelled"
 
 
 class LeagueTeamRegistrationStatus(models.TextChoices):

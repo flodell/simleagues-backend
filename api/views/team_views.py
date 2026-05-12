@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from django.db.models import Count, Q
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -7,10 +8,13 @@ from rest_framework.response import Response
 from api.serializers.team_serializers import TeamListSerializer, TeamCreateSerializer, TeamUpdateSerializer, \
     TeamDetailSerializer
 from core.models import Team
-from core.models.choices import TeamRole
+from core.models.choices import TeamRole, TeamJoinRequestStatus
 from core.models.team import TeamMembership, TeamJoinRequest
 from core.permissions import IsTeamManager, IsTeamOwner
 
+
+
+User = get_user_model()
 
 class TeamViewSet(viewsets.ModelViewSet):
     """
@@ -22,6 +26,9 @@ class TeamViewSet(viewsets.ModelViewSet):
     - Update: Owner or Manager
     - Delete: Owner only
     """
+    OWNER_ONLY_ACTIONS = frozenset({'destroy', 'transfer_ownership'})
+    MANAGER_ACTIONS = frozenset({'update', 'partial_update', 'approve_request', 'reject_request', 'kick', 'set_role'})
+    PUBLIC_ACTIONS = frozenset({'list', 'retrieve'})
 
     def get_queryset(self):
         return Team.objects.annotate(
@@ -39,14 +46,11 @@ class TeamViewSet(viewsets.ModelViewSet):
         return serializer_map.get(self.action, TeamListSerializer)
 
     def get_permissions(self):
-        """Set permissions based on action."""
-        if self.action in ['list', 'retrieve']:
+        if self.action in self.PUBLIC_ACTIONS:
             return [AllowAny()]
-        elif self.action == 'create':
-            return [IsAuthenticated()]
-        elif self.action in ['update', 'partial_update']:
+        elif self.action in self.MANAGER_ACTIONS:
             return [IsAuthenticated(), IsTeamManager()]
-        elif self.action == 'destroy':
+        elif self.action in self.OWNER_ONLY_ACTIONS:
             return [IsAuthenticated(), IsTeamOwner()]
         return [IsAuthenticated()]
 
@@ -95,10 +99,10 @@ class TeamViewSet(viewsets.ModelViewSet):
         if TeamMembership.objects.filter(team=team, user=request.user, is_active=True).exists():
             return Response(
                 {"detail": "You are already a member of this team."},
-                status=status.HTTP_400_BAD_REQUEST,
+                status=status.HTTP_409_CONFLICT,
             )
 
-        if TeamJoinRequest.objects.filter(team=team, user=request.user, status="pending").exists():
+        if TeamJoinRequest.objects.filter(team=team, user=request.user, status=TeamJoinRequestStatus.PENDING).exists():
             return Response(
                 {"detail": "You already have a pending request to join this team."},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -120,7 +124,7 @@ class TeamViewSet(viewsets.ModelViewSet):
         team = self.get_object()
 
         join_request = TeamJoinRequest.objects.filter(
-            team=team, user=request.user, status="pending"
+            team=team, user=request.user, status=TeamJoinRequestStatus.PENDING
         ).first()
 
         if not join_request:
@@ -129,7 +133,7 @@ class TeamViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        join_request.status = "cancelled"
+        join_request.status = TeamJoinRequestStatus.CANCELLED
         join_request.save(update_fields=["status"])
         return Response(
             {"detail": "Join request cancelled."},
@@ -142,7 +146,7 @@ class TeamViewSet(viewsets.ModelViewSet):
         team = self.get_object()
 
         join_request = TeamJoinRequest.objects.filter(
-            team=team, pk=request.data.get("request_id"), status="pending"
+            team=team, pk=request.data.get("request_id"), status=TeamJoinRequestStatus.PENDING
         ).first()
 
         if not join_request:
@@ -163,7 +167,7 @@ class TeamViewSet(viewsets.ModelViewSet):
         team = self.get_object()
 
         join_request = TeamJoinRequest.objects.filter(
-            team=team, pk=request.data.get("request_id"), status="pending"
+            team=team, pk=request.data.get("request_id"), status=TeamJoinRequestStatus.PENDING
         ).first()
 
         if not join_request:
@@ -293,10 +297,36 @@ class TeamViewSet(viewsets.ModelViewSet):
                     {"detail": "Managers cannot change the role of other managers."},
                     status=status.HTTP_403_FORBIDDEN,
                 )
+            if new_role not in [TeamRole.DRIVER, TeamRole.RESERVE]:
+                return Response(
+                    {"detail": "Managers can only assign 'driver' or 'reserve' roles."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
 
         membership.role = new_role
         membership.save(update_fields=["role"])
         return Response(
             {"detail": f"{membership.user.username}'s role has been updated to '{new_role}'."},
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated, IsTeamOwner])
+    def transfer_ownership(self, request, pk=None):
+        """Transfer ownership to another team member. Owner only."""
+        team = self.get_object()
+        user_id = request.data.get("user_id")
+
+        try:
+            new_owner = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            team.transfer_ownership(new_owner)
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            {"detail": f"{new_owner.username} is now the owner of {team.name}."},
             status=status.HTTP_200_OK,
         )
