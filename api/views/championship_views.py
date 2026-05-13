@@ -12,9 +12,8 @@ from api.serializers.championship_serializers import (
     ChampionshipCreateSerializer,
     StandingSerializer,
 )
-from core.models import Team
 from core.models.championship import Championship
-from core.models.choices import ChampionshipStatus, ParticipantType, LeagueVisibility
+from core.models.choices import ChampionshipStatus, LeagueVisibility
 from core.models.league import League
 
 
