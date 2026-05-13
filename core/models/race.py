@@ -131,6 +131,8 @@ class Race(models.Model):
         blank=True, help_text="Optional notes about the race (incidents, weather, etc.)"
     )
 
+    is_active = models.BooleanField(default=True)
+
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -3,5 +3,5 @@ from .car import Car, CarSubCategory
 from .track import Track
 from .league import League, LeagueMembership, LeagueJoinRequest
 from .championship import Championship, ChampionshipEntry, Standing
-from .race import Race, RaceResult
-from .team import Team
+from .race import Race, RaceEntry, RaceLineup, RaceResult
+from .team import Team, TeamMembership, TeamJoinRequest
