@@ -426,47 +426,72 @@ class RaceLineup(models.Model):
         related_name="lineups",
     )
 
-    user = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name="race_lineups",
-    )
-
-    # Driver category (e.g., Pro, Am, Silver, Gold)
-    role = models.CharField(max_length=100, blank=True)
-
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = "RaceLineup"
         verbose_name_plural = "RaceLineups"
-        unique_together = [["race", "user"]]
         ordering = ["race"]
 
 
     def clean(self):
         errors = {}
 
-        # RaceEntry must have a team
-        team = None
-        if self.race_entry.championship_entry:
-            team = self.race_entry.championship_entry.team
-        else:
-            team = self.race_entry.team
-
+        team = (
+            self.race_entry.team or
+            (self.race_entry.championship_entry and self.race_entry.championship_entry.team)
+        )
         if not team:
             errors["race_entry"] = "RaceLineup can only be used for team race entries."
 
-        # Driver must be active member of the team
+        if errors:
+            raise ValidationError(errors)
+
+class RaceLineupDriver(models.Model):
+    """
+        Represents a driver in a race lineup.
+        Driver must be an active member of the team.
+        """
+    lineup = models.ForeignKey(
+        RaceLineup,
+        on_delete=models.CASCADE,
+        related_name="lineup_drivers",
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="race_lineup_entries",
+    )
+    role = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Driver category/role (e.g. Pro, Am, Silver, Gold)",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "RaceLineupDriver"
+        verbose_name_plural = "RaceLineupDrivers"
+        unique_together = [["lineup", "user"]]
+
+    def clean(self):
+        errors = {}
+
+        team = (
+                self.lineup.race_entry.team or
+                (self.lineup.race_entry.championship_entry and self.lineup.race_entry.championship_entry.team)
+        )
+
         if team and not TeamMembership.objects.filter(
-            team=team, user=self.user, is_active=True
+                team=team, user=self.user, is_active=True
         ).exists():
             errors["user"] = f"{self.user.username} is not an active member of {team.name}."
 
         if errors:
             raise ValidationError(errors)
-
 
 class RaceResult(models.Model):
     """
