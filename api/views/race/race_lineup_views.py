@@ -3,8 +3,12 @@ from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from api.serializers.race.race_lineup_serializers import RaceLineupCreateSerializer, RaceLineupSerializer, \
-    RaceLineupDriverCreateSerializer, RaceLineupDriverSerializer
+from api.serializers.race.race_lineup_serializers import (
+    RaceLineupCreateSerializer,
+    RaceLineupSerializer,
+    RaceLineupDriverCreateSerializer,
+    RaceLineupDriverSerializer,
+)
 from core.models import Race, RaceLineup, TeamMembership, RaceLineupDriver
 from core.models.choices import TeamRole
 
@@ -25,10 +29,14 @@ class RaceLineupViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         race = self.get_race()
-        return RaceLineup.objects.filter(race=race).select_related(
-            "race_entry__team",
-            "race_entry__championship_entry__team",
-        ).prefetch_related("lineup_drivers__user")
+        return (
+            RaceLineup.objects.filter(race=race)
+            .select_related(
+                "race_entry__team",
+                "race_entry__championship_entry__team",
+            )
+            .prefetch_related("lineup_drivers__user")
+        )
 
     def get_serializer_class(self):
         if self.action == "create":
@@ -44,9 +52,8 @@ class RaceLineupViewSet(viewsets.ModelViewSet):
         if race.league and race.league.is_staff(request.user):
             return True
 
-        team = (
-            race_entry.team or
-            (race_entry.championship_entry and race_entry.championship_entry.team)
+        team = race_entry.team or (
+            race_entry.championship_entry and race_entry.championship_entry.team
         )
         if not team:
             return False

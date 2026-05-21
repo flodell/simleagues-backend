@@ -3,7 +3,11 @@ from django.core.exceptions import ValidationError
 from django.db import models
 
 from core.models.car import Car
-from core.models.choices import ParticipantType, ChampionshipStatus, ChampionshipEntryStatus
+from core.models.choices import (
+    ParticipantType,
+    ChampionshipStatus,
+    ChampionshipEntryStatus,
+)
 
 User = get_user_model()
 
@@ -180,8 +184,7 @@ class ChampionshipEntry(models.Model):
     )
 
     car = models.ForeignKey(
-        Car, on_delete=models.PROTECT,
-        help_text="Car used by this driver/team"
+        Car, on_delete=models.PROTECT, help_text="Car used by this driver/team"
     )
 
     racing_number = models.IntegerField(help_text="Driver or team racing number")
@@ -201,7 +204,6 @@ class ChampionshipEntry(models.Model):
     )
 
     ban_reason = models.TextField(blank=True)
-
 
     # Metadata
     joined_at = models.DateTimeField(auto_now_add=True)
@@ -269,6 +271,7 @@ class ChampionshipEntry(models.Model):
         self.ban_reason = reason
         self.save()
 
+
 class Standing(models.Model):
     """
     Championship standing entry.
@@ -286,7 +289,7 @@ class Standing(models.Model):
     )
 
     # Either driver OR team (mutually exclusive)
-    participant  = models.ForeignKey(
+    participant = models.ForeignKey(
         ChampionshipEntry,
         on_delete=models.CASCADE,
         related_name="standings",
@@ -386,5 +389,7 @@ class Standing(models.Model):
                 raise ValidationError({"team": "Team championship requires a team."})
             if self.participant:
                 raise ValidationError(
-                    {"participant": "Team championship cannot have individual participants."}
+                    {
+                        "participant": "Team championship cannot have individual participants."
+                    }
                 )

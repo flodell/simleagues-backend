@@ -24,8 +24,12 @@ class TeamCRUDTests(APITestCase):
         self.other = User.objects.create_user(username="other", password="pass")
 
         self.team = Team.objects.create(name="Red Racing", description="A test team")
-        TeamMembership.objects.create(team=self.team, user=self.owner, role=TeamRole.OWNER)
-        TeamMembership.objects.create(team=self.team, user=self.manager, role=TeamRole.MANAGER)
+        TeamMembership.objects.create(
+            team=self.team, user=self.owner, role=TeamRole.OWNER
+        )
+        TeamMembership.objects.create(
+            team=self.team, user=self.manager, role=TeamRole.MANAGER
+        )
 
         self.list_url = reverse("team-list")
         self.detail_url = reverse("team-detail", kwargs={"pk": self.team.pk})
@@ -40,7 +44,9 @@ class TeamCRUDTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         team = Team.objects.get(name="New Team")
         self.assertTrue(
-            TeamMembership.objects.filter(team=team, user=self.other, role=TeamRole.OWNER).exists()
+            TeamMembership.objects.filter(
+                team=team, user=self.other, role=TeamRole.OWNER
+            ).exists()
         )
 
     def test_create_team_name_too_short(self):
@@ -87,6 +93,7 @@ class TeamCRUDTests(APITestCase):
         response = self.client.delete(self.detail_url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+
 class TeamJoinRequestTests(APITestCase):
 
     def setUp(self):
@@ -96,8 +103,12 @@ class TeamJoinRequestTests(APITestCase):
         self.other = User.objects.create_user(username="other", password="pass")
 
         self.team = Team.objects.create(name="Red Racing")
-        TeamMembership.objects.create(team=self.team, user=self.owner, role=TeamRole.OWNER)
-        TeamMembership.objects.create(team=self.team, user=self.manager, role=TeamRole.MANAGER)
+        TeamMembership.objects.create(
+            team=self.team, user=self.owner, role=TeamRole.OWNER
+        )
+        TeamMembership.objects.create(
+            team=self.team, user=self.manager, role=TeamRole.MANAGER
+        )
 
         self.join_url = reverse("team-join-request", kwargs={"pk": self.team.pk})
         self.cancel_url = reverse("team-cancel-request", kwargs={"pk": self.team.pk})
@@ -112,7 +123,9 @@ class TeamJoinRequestTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(
             TeamJoinRequest.objects.filter(
-                team=self.team, user=self.applicant, status=TeamJoinRequestStatus.PENDING
+                team=self.team,
+                user=self.applicant,
+                status=TeamJoinRequestStatus.PENDING,
             ).exists()
         )
 
@@ -205,6 +218,7 @@ class TeamJoinRequestTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+
 class TeamMembershipActionTests(APITestCase):
 
     def setUp(self):
@@ -214,14 +228,22 @@ class TeamMembershipActionTests(APITestCase):
         self.other = User.objects.create_user(username="other", password="pass")
 
         self.team = Team.objects.create(name="Red Racing")
-        TeamMembership.objects.create(team=self.team, user=self.owner, role=TeamRole.OWNER)
-        TeamMembership.objects.create(team=self.team, user=self.manager, role=TeamRole.MANAGER)
-        TeamMembership.objects.create(team=self.team, user=self.driver, role=TeamRole.DRIVER)
+        TeamMembership.objects.create(
+            team=self.team, user=self.owner, role=TeamRole.OWNER
+        )
+        TeamMembership.objects.create(
+            team=self.team, user=self.manager, role=TeamRole.MANAGER
+        )
+        TeamMembership.objects.create(
+            team=self.team, user=self.driver, role=TeamRole.DRIVER
+        )
 
         self.leave_url = reverse("team-leave", kwargs={"pk": self.team.pk})
         self.kick_url = reverse("team-kick", kwargs={"pk": self.team.pk})
         self.set_role_url = reverse("team-set-role", kwargs={"pk": self.team.pk})
-        self.transfer_url = reverse("team-transfer-ownership", kwargs={"pk": self.team.pk})
+        self.transfer_url = reverse(
+            "team-transfer-ownership", kwargs={"pk": self.team.pk}
+        )
 
     # --- leave ---
 
@@ -247,7 +269,9 @@ class TeamMembershipActionTests(APITestCase):
 
     def test_kick_driver_as_owner(self):
         auth_client(self.client, self.owner)
-        response = self.client.post(self.kick_url, {"user_id": self.driver.pk}, format="json")
+        response = self.client.post(
+            self.kick_url, {"user_id": self.driver.pk}, format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertFalse(
             TeamMembership.objects.filter(team=self.team, user=self.driver).exists()
@@ -255,19 +279,27 @@ class TeamMembershipActionTests(APITestCase):
 
     def test_kick_driver_as_manager(self):
         auth_client(self.client, self.manager)
-        response = self.client.post(self.kick_url, {"user_id": self.driver.pk}, format="json")
+        response = self.client.post(
+            self.kick_url, {"user_id": self.driver.pk}, format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_kick_manager_as_manager_blocked(self):
         manager2 = User.objects.create_user(username="manager2", password="pass")
-        TeamMembership.objects.create(team=self.team, user=manager2, role=TeamRole.MANAGER)
+        TeamMembership.objects.create(
+            team=self.team, user=manager2, role=TeamRole.MANAGER
+        )
         auth_client(self.client, self.manager)
-        response = self.client.post(self.kick_url, {"user_id": manager2.pk}, format="json")
+        response = self.client.post(
+            self.kick_url, {"user_id": manager2.pk}, format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_kick_owner_blocked(self):
         auth_client(self.client, self.manager)
-        response = self.client.post(self.kick_url, {"user_id": self.owner.pk}, format="json")
+        response = self.client.post(
+            self.kick_url, {"user_id": self.owner.pk}, format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     # --- set_role ---
@@ -275,40 +307,53 @@ class TeamMembershipActionTests(APITestCase):
     def test_set_role_owner_assigns_manager(self):
         auth_client(self.client, self.owner)
         response = self.client.post(
-            self.set_role_url, {"user_id": self.driver.pk, "role": TeamRole.MANAGER}, format="json"
+            self.set_role_url,
+            {"user_id": self.driver.pk, "role": TeamRole.MANAGER},
+            format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(
-            TeamMembership.objects.get(team=self.team, user=self.driver).role, TeamRole.MANAGER
+            TeamMembership.objects.get(team=self.team, user=self.driver).role,
+            TeamRole.MANAGER,
         )
 
     def test_set_role_manager_assigns_driver(self):
         reserve = User.objects.create_user(username="reserve", password="pass")
-        TeamMembership.objects.create(team=self.team, user=reserve, role=TeamRole.RESERVE)
+        TeamMembership.objects.create(
+            team=self.team, user=reserve, role=TeamRole.RESERVE
+        )
         auth_client(self.client, self.manager)
         response = self.client.post(
-            self.set_role_url, {"user_id": reserve.pk, "role": TeamRole.DRIVER}, format="json"
+            self.set_role_url,
+            {"user_id": reserve.pk, "role": TeamRole.DRIVER},
+            format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_set_role_manager_assigns_manager_blocked(self):
         auth_client(self.client, self.manager)
         response = self.client.post(
-            self.set_role_url, {"user_id": self.driver.pk, "role": TeamRole.MANAGER}, format="json"
+            self.set_role_url,
+            {"user_id": self.driver.pk, "role": TeamRole.MANAGER},
+            format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_set_role_owner_blocked(self):
         auth_client(self.client, self.owner)
         response = self.client.post(
-            self.set_role_url, {"user_id": self.driver.pk, "role": TeamRole.OWNER}, format="json"
+            self.set_role_url,
+            {"user_id": self.driver.pk, "role": TeamRole.OWNER},
+            format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_set_role_on_owner_blocked(self):
         auth_client(self.client, self.owner)
         response = self.client.post(
-            self.set_role_url, {"user_id": self.owner.pk, "role": TeamRole.MANAGER}, format="json"
+            self.set_role_url,
+            {"user_id": self.owner.pk, "role": TeamRole.MANAGER},
+            format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
@@ -316,21 +361,29 @@ class TeamMembershipActionTests(APITestCase):
 
     def test_transfer_ownership_as_owner(self):
         auth_client(self.client, self.owner)
-        response = self.client.post(self.transfer_url, {"user_id": self.driver.pk}, format="json")
+        response = self.client.post(
+            self.transfer_url, {"user_id": self.driver.pk}, format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(
-            TeamMembership.objects.get(team=self.team, user=self.driver).role, TeamRole.OWNER
+            TeamMembership.objects.get(team=self.team, user=self.driver).role,
+            TeamRole.OWNER,
         )
         self.assertEqual(
-            TeamMembership.objects.get(team=self.team, user=self.owner).role, TeamRole.MANAGER
+            TeamMembership.objects.get(team=self.team, user=self.owner).role,
+            TeamRole.MANAGER,
         )
 
     def test_transfer_ownership_to_non_member(self):
         auth_client(self.client, self.owner)
-        response = self.client.post(self.transfer_url, {"user_id": self.other.pk}, format="json")
+        response = self.client.post(
+            self.transfer_url, {"user_id": self.other.pk}, format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_transfer_ownership_as_non_owner(self):
         auth_client(self.client, self.manager)
-        response = self.client.post(self.transfer_url, {"user_id": self.driver.pk}, format="json")
+        response = self.client.post(
+            self.transfer_url, {"user_id": self.driver.pk}, format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

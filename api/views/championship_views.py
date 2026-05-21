@@ -105,7 +105,6 @@ class ChampionshipViewSet(LeaguePermissionMixin, viewsets.ModelViewSet):
 
         return super().create(request, *args, **kwargs)
 
-
     @action(detail=True, methods=["get"])
     def standings(self, request, pk=None):
         """Get championship standings ordered by position."""

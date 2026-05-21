@@ -4,7 +4,6 @@ from core.models.championship import Championship, Standing
 from core.models.choices import ParticipantType, LeagueMemberRole
 
 
-
 class StandingSerializer(serializers.ModelSerializer):
     """Serializer for championship standings"""
 
@@ -35,6 +34,7 @@ class StandingSerializer(serializers.ModelSerializer):
             if obj.participant.user:
                 return obj.participant.user.username
         return None
+
 
 class ChampionshipListSerializer(serializers.ModelSerializer):
     """Lightweight serializer for championship list"""

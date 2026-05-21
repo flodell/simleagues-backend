@@ -3,7 +3,10 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 
-from api.serializers.race.race_entry_serializers import RaceEntryCreateSerializer, RaceEntrySerializer
+from api.serializers.race.race_entry_serializers import (
+    RaceEntryCreateSerializer,
+    RaceEntrySerializer,
+)
 from core.models.race import Race, RaceEntry
 from core.models.championship import ChampionshipEntry
 from core.models.choices import RaceEntryStatus, LeagueVisibility, RaceStatus, TeamRole
@@ -79,10 +82,14 @@ class RaceEntryViewSet(viewsets.ModelViewSet):
 
         is_staff = race.league and race.league.is_staff(request.user)
         is_entrant = (
-            entry.user == request.user or
-            (entry.championship_entry and entry.championship_entry.user == request.user) or
-            TeamMembership.objects.filter(
-                team=entry.team or (entry.championship_entry and entry.championship_entry.team),
+            entry.user == request.user
+            or (
+                entry.championship_entry
+                and entry.championship_entry.user == request.user
+            )
+            or TeamMembership.objects.filter(
+                team=entry.team
+                or (entry.championship_entry and entry.championship_entry.team),
                 user=request.user,
                 role__in=[TeamRole.OWNER, TeamRole.MANAGER],
                 is_active=True,
@@ -130,7 +137,9 @@ class RaceEntryViewSet(viewsets.ModelViewSet):
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             entry = serializer.save(race=race, status=RaceEntryStatus.APPROVED)
-            return Response(RaceEntrySerializer(entry).data, status=status.HTTP_201_CREATED)
+            return Response(
+                RaceEntrySerializer(entry).data, status=status.HTTP_201_CREATED
+            )
 
         league = race.league
 
@@ -151,7 +160,9 @@ class RaceEntryViewSet(viewsets.ModelViewSet):
             championship_entry_id = request.data.get("championship_entry")
             if not championship_entry_id:
                 return Response(
-                    {"detail": "championship_entry is required for championship races."},
+                    {
+                        "detail": "championship_entry is required for championship races."
+                    },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
@@ -187,7 +198,9 @@ class RaceEntryViewSet(viewsets.ModelViewSet):
             ).exists()
             if not is_team_manager:
                 return Response(
-                    {"detail": "You must be owner or manager of the team to register it."},
+                    {
+                        "detail": "You must be owner or manager of the team to register it."
+                    },
                     status=status.HTTP_403_FORBIDDEN,
                 )
 

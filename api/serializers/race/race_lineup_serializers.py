@@ -29,9 +29,8 @@ class RaceLineupSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "race", "created_at", "updated_at"]
 
     def get_team_name(self, obj):
-        team = (
-            obj.race_entry.team or
-            (obj.race_entry.championship_entry and obj.race_entry.championship_entry.team)
+        team = obj.race_entry.team or (
+            obj.race_entry.championship_entry and obj.race_entry.championship_entry.team
         )
         return team.name if team else None
 
@@ -43,12 +42,13 @@ class RaceLineupCreateSerializer(serializers.ModelSerializer):
         fields = ["race_entry"]
 
     def validate_race_entry(self, value):
-        team = (
-            value.team or
-            (value.championship_entry and value.championship_entry.team)
+        team = value.team or (
+            value.championship_entry and value.championship_entry.team
         )
         if not team:
-            raise serializers.ValidationError("RaceLineup can only be used for team race entries.")
+            raise serializers.ValidationError(
+                "RaceLineup can only be used for team race entries."
+            )
         return value
 
 
@@ -60,11 +60,13 @@ class RaceLineupDriverCreateSerializer(serializers.ModelSerializer):
 
     def validate_user(self, value):
         lineup = self.context.get("lineup")
-        team = (
-            lineup.race_entry.team or
-            (lineup.race_entry.championship_entry and lineup.race_entry.championship_entry.team)
+        team = lineup.race_entry.team or (
+            lineup.race_entry.championship_entry
+            and lineup.race_entry.championship_entry.team
         )
-        if not TeamMembership.objects.filter(team=team, user=value, is_active=True).exists():
+        if not TeamMembership.objects.filter(
+            team=team, user=value, is_active=True
+        ).exists():
             raise serializers.ValidationError(
                 f"{value.username} is not an active member of {team.name}."
             )

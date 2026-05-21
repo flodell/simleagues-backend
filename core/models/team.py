@@ -77,8 +77,9 @@ class Team(models.Model):
         return self.memberships.filter(user=user, role=TeamRole.OWNER).exists()
 
     def is_manager(self, user):
-        return self.memberships.filter(user=user, role__in=[TeamRole.OWNER, TeamRole.MANAGER]).exists()
-
+        return self.memberships.filter(
+            user=user, role__in=[TeamRole.OWNER, TeamRole.MANAGER]
+        ).exists()
 
 
 class TeamMembership(models.Model):
@@ -131,7 +132,6 @@ class TeamMembership(models.Model):
                 f"Team already has an owner: {existing_owner.user.username}."
         if errors:
             raise ValidationError(errors)
-
 
 
 class TeamJoinRequest(models.Model):
@@ -251,7 +251,6 @@ class TeamJoinRequest(models.Model):
         self.status = TeamJoinRequestStatus.REJECTED
         self.resolved_by = resolved_by
         self.save()
-
 
 
 class LeagueTeamRegistration(models.Model):

@@ -29,9 +29,11 @@ class RaceViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        queryset = Race.objects.annotate(
-            entry_count=Count("entries", distinct=True)
-        ).select_related("league", "championship", "track", "creator").order_by("-scheduled_date")
+        queryset = (
+            Race.objects.annotate(entry_count=Count("entries", distinct=True))
+            .select_related("league", "championship", "track", "creator")
+            .order_by("-scheduled_date")
+        )
 
         if not user.is_authenticated:
             return queryset.filter(
@@ -41,9 +43,9 @@ class RaceViewSet(viewsets.ModelViewSet):
 
         # Authenticated: public races + races from leagues they're in + their own races
         return queryset.filter(
-            Q(visibility=RaceVisibility.PUBLIC, is_active=True) |
-            Q(league__members=user) |
-            Q(creator=user)
+            Q(visibility=RaceVisibility.PUBLIC, is_active=True)
+            | Q(league__members=user)
+            | Q(creator=user)
         ).distinct()
 
     def get_serializer_class(self):
@@ -134,7 +136,9 @@ class RaceViewSet(viewsets.ModelViewSet):
             status_value = RaceStatus(new_status)
         except ValueError:
             return Response(
-                {"detail": f"Invalid status. Must be one of: {[s.value for s in RaceStatus]}"},
+                {
+                    "detail": f"Invalid status. Must be one of: {[s.value for s in RaceStatus]}"
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

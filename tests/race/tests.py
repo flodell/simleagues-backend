@@ -12,7 +12,6 @@ from core.models.choices import (
     RaceStatus,
     RaceEntryStatus,
     CarCategory,
-
 )
 from core.models.game import Game
 from core.models.league import League, LeagueMembership
@@ -36,13 +35,21 @@ class RaceCRUDTests(APITestCase):
         self.other = User.objects.create_user(username="other", password="pass")
 
         self.game = Game.objects.create(name="Le Mans Ultimate", short_name="LMU")
-        self.track = Track.objects.create(name="Circuit de la Sarthe", game=self.game, corners=14)
+        self.track = Track.objects.create(
+            name="Circuit de la Sarthe", game=self.game, corners=14
+        )
         self.league = League.objects.create(
             name="Test League", game=self.game, visibility=LeagueVisibility.PUBLIC
         )
-        LeagueMembership.objects.create(league=self.league, user=self.creator, role=LeagueMemberRole.ADMIN)
-        LeagueMembership.objects.create(league=self.league, user=self.staff, role=LeagueMemberRole.MODERATOR)
-        LeagueMembership.objects.create(league=self.league, user=self.member, role=LeagueMemberRole.MEMBER)
+        LeagueMembership.objects.create(
+            league=self.league, user=self.creator, role=LeagueMemberRole.ADMIN
+        )
+        LeagueMembership.objects.create(
+            league=self.league, user=self.staff, role=LeagueMemberRole.MODERATOR
+        )
+        LeagueMembership.objects.create(
+            league=self.league, user=self.member, role=LeagueMemberRole.MEMBER
+        )
 
         self.race = Race.objects.create(
             name="Test Race",
@@ -80,39 +87,53 @@ class RaceCRUDTests(APITestCase):
 
     def test_create_race_authenticated(self):
         auth_client(self.client, self.member)
-        response = self.client.post(self.list_url, {
-            "name": "New Race",
-            "league": self.league.pk,
-            "track": self.track.pk,
-            "scheduled_date": "2025-08-01T14:00:00Z",
-            "visibility": RaceVisibility.PUBLIC,
-        }, format="json")
+        response = self.client.post(
+            self.list_url,
+            {
+                "name": "New Race",
+                "league": self.league.pk,
+                "track": self.track.pk,
+                "scheduled_date": "2025-08-01T14:00:00Z",
+                "visibility": RaceVisibility.PUBLIC,
+            },
+            format="json",
+        )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(Race.objects.get(pk=response.data["id"]).creator, self.member)
 
     def test_create_race_unauthenticated_blocked(self):
-        response = self.client.post(self.list_url, {
-            "name": "New Race",
-            "track": self.track.pk,
-            "scheduled_date": "2025-08-01T14:00:00Z",
-        }, format="json")
+        response = self.client.post(
+            self.list_url,
+            {
+                "name": "New Race",
+                "track": self.track.pk,
+                "scheduled_date": "2025-08-01T14:00:00Z",
+            },
+            format="json",
+        )
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     # --- Update ---
 
     def test_update_as_creator(self):
         auth_client(self.client, self.creator)
-        response = self.client.patch(self.detail_url, {"name": "Updated Race"}, format="json")
+        response = self.client.patch(
+            self.detail_url, {"name": "Updated Race"}, format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_update_as_staff(self):
         auth_client(self.client, self.staff)
-        response = self.client.patch(self.detail_url, {"name": "Updated Race"}, format="json")
+        response = self.client.patch(
+            self.detail_url, {"name": "Updated Race"}, format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_update_as_non_authorized_blocked(self):
         auth_client(self.client, self.other)
-        response = self.client.patch(self.detail_url, {"name": "Updated Race"}, format="json")
+        response = self.client.patch(
+            self.detail_url, {"name": "Updated Race"}, format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     # --- Delete ---
@@ -139,19 +160,25 @@ class RaceCRUDTests(APITestCase):
 
     def test_update_status_as_creator(self):
         auth_client(self.client, self.creator)
-        response = self.client.post(self.status_url, {"status": RaceStatus.IN_PROGRESS}, format="json")
+        response = self.client.post(
+            self.status_url, {"status": RaceStatus.IN_PROGRESS}, format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.race.refresh_from_db()
         self.assertEqual(self.race.status, RaceStatus.IN_PROGRESS)
 
     def test_update_status_invalid(self):
         auth_client(self.client, self.creator)
-        response = self.client.post(self.status_url, {"status": "INVALID"}, format="json")
+        response = self.client.post(
+            self.status_url, {"status": "INVALID"}, format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_update_status_as_non_authorized_blocked(self):
         auth_client(self.client, self.other)
-        response = self.client.post(self.status_url, {"status": RaceStatus.IN_PROGRESS}, format="json")
+        response = self.client.post(
+            self.status_url, {"status": RaceStatus.IN_PROGRESS}, format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
@@ -164,16 +191,27 @@ class RaceEntryTests(APITestCase):
         self.other = User.objects.create_user(username="other", password="pass")
 
         self.game = Game.objects.create(name="Le Mans Ultimate", short_name="LMU")
-        self.track = Track.objects.create(name="Circuit de la Sarthe", game=self.game, corners=14)
+        self.track = Track.objects.create(
+            name="Circuit de la Sarthe", game=self.game, corners=14
+        )
         self.car = Car.objects.create(
-            name="Ferrari 499P", game=self.game, category=CarCategory.HYPERCAR, year=2024
+            name="Ferrari 499P",
+            game=self.game,
+            category=CarCategory.HYPERCAR,
+            year=2024,
         )
         self.league = League.objects.create(
             name="Test League", game=self.game, visibility=LeagueVisibility.PUBLIC
         )
-        LeagueMembership.objects.create(league=self.league, user=self.creator, role=LeagueMemberRole.ADMIN)
-        LeagueMembership.objects.create(league=self.league, user=self.staff, role=LeagueMemberRole.MODERATOR)
-        LeagueMembership.objects.create(league=self.league, user=self.member, role=LeagueMemberRole.MEMBER)
+        LeagueMembership.objects.create(
+            league=self.league, user=self.creator, role=LeagueMemberRole.ADMIN
+        )
+        LeagueMembership.objects.create(
+            league=self.league, user=self.staff, role=LeagueMemberRole.MODERATOR
+        )
+        LeagueMembership.objects.create(
+            league=self.league, user=self.member, role=LeagueMemberRole.MEMBER
+        )
 
         self.race = Race.objects.create(
             name="Test Race",
@@ -185,19 +223,29 @@ class RaceEntryTests(APITestCase):
             status=RaceStatus.SCHEDULED,
         )
 
-        self.register_url = reverse("race-entries-register", kwargs={"race_pk": self.race.pk})
+        self.register_url = reverse(
+            "race-entries-register", kwargs={"race_pk": self.race.pk}
+        )
         self.list_url = reverse("race-entries-list", kwargs={"race_pk": self.race.pk})
 
     def _entry_detail_url(self, entry_pk):
-        return reverse("race-entries-detail", kwargs={"race_pk": self.race.pk, "pk": entry_pk})
+        return reverse(
+            "race-entries-detail", kwargs={"race_pk": self.race.pk, "pk": entry_pk}
+        )
 
     def _approve_url(self, entry_pk):
-        return reverse("race-entries-approve", kwargs={"race_pk": self.race.pk, "pk": entry_pk})
+        return reverse(
+            "race-entries-approve", kwargs={"race_pk": self.race.pk, "pk": entry_pk}
+        )
 
     def _reject_url(self, entry_pk):
-        return reverse("race-entries-reject", kwargs={"race_pk": self.race.pk, "pk": entry_pk})
+        return reverse(
+            "race-entries-reject", kwargs={"race_pk": self.race.pk, "pk": entry_pk}
+        )
 
-    def _create_entry(self, user=None, racing_number=42, entry_status=RaceEntryStatus.PENDING):
+    def _create_entry(
+        self, user=None, racing_number=42, entry_status=RaceEntryStatus.PENDING
+    ):
         return RaceEntry.objects.create(
             race=self.race,
             user=user,
@@ -210,11 +258,15 @@ class RaceEntryTests(APITestCase):
 
     def test_register_public_league_auto_approved(self):
         auth_client(self.client, self.member)
-        response = self.client.post(self.register_url, {
-            "car": self.car.pk,
-            "racing_number": 42,
-            "user": self.member.pk,
-        }, format="json")
+        response = self.client.post(
+            self.register_url,
+            {
+                "car": self.car.pk,
+                "racing_number": 42,
+                "user": self.member.pk,
+            },
+            format="json",
+        )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         entry = RaceEntry.objects.get(race=self.race, user=self.member)
         self.assertEqual(entry.status, RaceEntryStatus.APPROVED)
@@ -223,11 +275,15 @@ class RaceEntryTests(APITestCase):
         self.league.visibility = LeagueVisibility.INVITE_ONLY
         self.league.save()
         auth_client(self.client, self.member)
-        response = self.client.post(self.register_url, {
-            "car": self.car.pk,
-            "racing_number": 42,
-            "user": self.member.pk,
-        }, format="json")
+        response = self.client.post(
+            self.register_url,
+            {
+                "car": self.car.pk,
+                "racing_number": 42,
+                "user": self.member.pk,
+            },
+            format="json",
+        )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         entry = RaceEntry.objects.get(race=self.race, user=self.member)
         self.assertEqual(entry.status, RaceEntryStatus.PENDING)
@@ -236,31 +292,43 @@ class RaceEntryTests(APITestCase):
         self.league.visibility = LeagueVisibility.PRIVATE
         self.league.save()
         auth_client(self.client, self.member)
-        response = self.client.post(self.register_url, {
-            "car": self.car.pk,
-            "racing_number": 42,
-            "user": self.member.pk,
-        }, format="json")
+        response = self.client.post(
+            self.register_url,
+            {
+                "car": self.car.pk,
+                "racing_number": 42,
+                "user": self.member.pk,
+            },
+            format="json",
+        )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_register_non_member_blocked(self):
         auth_client(self.client, self.other)
-        response = self.client.post(self.register_url, {
-            "car": self.car.pk,
-            "racing_number": 42,
-            "user": self.other.pk,
-        }, format="json")
+        response = self.client.post(
+            self.register_url,
+            {
+                "car": self.car.pk,
+                "racing_number": 42,
+                "user": self.other.pk,
+            },
+            format="json",
+        )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_register_non_scheduled_race_blocked(self):
         self.race.status = RaceStatus.COMPLETED
         self.race.save()
         auth_client(self.client, self.member)
-        response = self.client.post(self.register_url, {
-            "car": self.car.pk,
-            "racing_number": 42,
-            "user": self.member.pk,
-        }, format="json")
+        response = self.client.post(
+            self.register_url,
+            {
+                "car": self.car.pk,
+                "racing_number": 42,
+                "user": self.member.pk,
+            },
+            format="json",
+        )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     # --- Approve/Reject ---

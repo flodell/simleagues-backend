@@ -4,10 +4,16 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 
-from api.serializers.championship_entry_serializers import ChampionshipEntryCreateSerializer, \
-    ChampionshipEntrySerializer
+from api.serializers.championship_entry_serializers import (
+    ChampionshipEntryCreateSerializer,
+    ChampionshipEntrySerializer,
+)
 from core.models.championship import Championship, ChampionshipEntry
-from core.models.choices import ChampionshipEntryStatus, LeagueVisibility, ChampionshipStatus
+from core.models.choices import (
+    ChampionshipEntryStatus,
+    LeagueVisibility,
+    ChampionshipStatus,
+)
 from core.models.team import TeamMembership
 from core.models.choices import TeamRole
 
@@ -79,8 +85,8 @@ class ChampionshipEntryViewSet(viewsets.ModelViewSet):
         is_staff = championship.league.is_staff(request.user)
 
         is_entrant = (
-            entry.user == request.user or
-            TeamMembership.objects.filter(
+            entry.user == request.user
+            or TeamMembership.objects.filter(
                 team=entry.team,
                 user=request.user,
                 role__in=[TeamRole.OWNER, TeamRole.MANAGER],
@@ -119,9 +125,14 @@ class ChampionshipEntryViewSet(viewsets.ModelViewSet):
         league = championship.league
 
         # Block if championship is not open
-        if championship.status not in [ChampionshipStatus.UPCOMING, ChampionshipStatus.ACTIVE]:
+        if championship.status not in [
+            ChampionshipStatus.UPCOMING,
+            ChampionshipStatus.ACTIVE,
+        ]:
             return Response(
-                {"detail": "Cannot register for a completed or cancelled championship."},
+                {
+                    "detail": "Cannot register for a completed or cancelled championship."
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -141,9 +152,12 @@ class ChampionshipEntryViewSet(viewsets.ModelViewSet):
 
         # Check max participants
         if championship.max_participants:
-            if championship.entries.filter(
-                status=ChampionshipEntryStatus.APPROVED
-            ).count() >= championship.max_participants:
+            if (
+                championship.entries.filter(
+                    status=ChampionshipEntryStatus.APPROVED
+                ).count()
+                >= championship.max_participants
+            ):
                 return Response(
                     {"detail": "Maximum participants reached."},
                     status=status.HTTP_400_BAD_REQUEST,
@@ -160,7 +174,9 @@ class ChampionshipEntryViewSet(viewsets.ModelViewSet):
             ).exists()
             if not is_team_manager:
                 return Response(
-                    {"detail": "You must be owner or manager of the team to register it."},
+                    {
+                        "detail": "You must be owner or manager of the team to register it."
+                    },
                     status=status.HTTP_403_FORBIDDEN,
                 )
 

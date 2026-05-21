@@ -5,7 +5,12 @@ from django.core.exceptions import ValidationError
 
 from core.models import Car
 from core.models.championship import Championship, ChampionshipEntry
-from core.models.choices import RaceVisibility, RaceStatus, ParticipantType, RaceEntryStatus
+from core.models.choices import (
+    RaceVisibility,
+    RaceStatus,
+    ParticipantType,
+    RaceEntryStatus,
+)
 from core.models.league import League
 from core.models.team import TeamMembership
 from core.models.track import Track
@@ -255,14 +260,17 @@ class Race(models.Model):
         # For championship races, must be registered participant
         if self.championship:
             # Must have an approved RaceEntry linked to a ChampionshipEntry for this user
-            return self.entries.filter(
-                championship_entry__user=user,
-                status=RaceEntryStatus.APPROVED,
-            ).exists() or self.entries.filter(
-                championship_entry__team__memberships__user=user,
-                championship_entry__team__memberships__is_active=True,
-                status=RaceEntryStatus.APPROVED,
-            ).exists()
+            return (
+                self.entries.filter(
+                    championship_entry__user=user,
+                    status=RaceEntryStatus.APPROVED,
+                ).exists()
+                or self.entries.filter(
+                    championship_entry__team__memberships__user=user,
+                    championship_entry__team__memberships__is_active=True,
+                    status=RaceEntryStatus.APPROVED,
+                ).exists()
+            )
 
         # For league races, must be league member
         if self.league:
@@ -270,7 +278,6 @@ class Race(models.Model):
 
         # For independent races, anyone can participate
         return True
-
 
 
 class RaceEntry(models.Model):
@@ -370,19 +377,27 @@ class RaceEntry(models.Model):
         if self.championship_entry:
             # Championship context — team/user/car/racing_number not needed
             if self.team or self.user:
-                errors["team"] = "Cannot specify team or user when championship_entry is set."
+                errors["team"] = (
+                    "Cannot specify team or user when championship_entry is set."
+                )
             if self.car or self.racing_number:
-                errors["car"] = "Cannot specify car or racing_number when championship_entry is set."
+                errors["car"] = (
+                    "Cannot specify car or racing_number when championship_entry is set."
+                )
         else:
             # Standalone context
             if self.team and self.user:
                 errors["team"] = "Cannot have both team and user."
             if not self.team and not self.user:
-                errors["team"] = "Must specify either team, user, or championship_entry."
+                errors["team"] = (
+                    "Must specify either team, user, or championship_entry."
+                )
             if not self.car:
                 errors["car"] = "Car is required for standalone race entries."
             if not self.racing_number:
-                errors["racing_number"] = "Racing number is required for standalone race entries."
+                errors["racing_number"] = (
+                    "Racing number is required for standalone race entries."
+                )
 
         if errors:
             raise ValidationError(errors)
@@ -405,6 +420,7 @@ class RaceEntry(models.Model):
         self.status = RaceEntryStatus.BANNED
         self.ban_reason = reason
         self.save()
+
 
 class RaceLineup(models.Model):
     """
@@ -434,13 +450,12 @@ class RaceLineup(models.Model):
         verbose_name_plural = "RaceLineups"
         ordering = ["race"]
 
-
     def clean(self):
         errors = {}
 
-        team = (
-            self.race_entry.team or
-            (self.race_entry.championship_entry and self.race_entry.championship_entry.team)
+        team = self.race_entry.team or (
+            self.race_entry.championship_entry
+            and self.race_entry.championship_entry.team
         )
         if not team:
             errors["race_entry"] = "RaceLineup can only be used for team race entries."
@@ -448,11 +463,13 @@ class RaceLineup(models.Model):
         if errors:
             raise ValidationError(errors)
 
+
 class RaceLineupDriver(models.Model):
     """
-        Represents a driver in a race lineup.
-        Driver must be an active member of the team.
-        """
+    Represents a driver in a race lineup.
+    Driver must be an active member of the team.
+    """
+
     lineup = models.ForeignKey(
         RaceLineup,
         on_delete=models.CASCADE,
@@ -480,18 +497,24 @@ class RaceLineupDriver(models.Model):
     def clean(self):
         errors = {}
 
-        team = (
-                self.lineup.race_entry.team or
-                (self.lineup.race_entry.championship_entry and self.lineup.race_entry.championship_entry.team)
+        team = self.lineup.race_entry.team or (
+            self.lineup.race_entry.championship_entry
+            and self.lineup.race_entry.championship_entry.team
         )
 
-        if team and not TeamMembership.objects.filter(
+        if (
+            team
+            and not TeamMembership.objects.filter(
                 team=team, user=self.user, is_active=True
-        ).exists():
-            errors["user"] = f"{self.user.username} is not an active member of {team.name}."
+            ).exists()
+        ):
+            errors["user"] = (
+                f"{self.user.username} is not an active member of {team.name}."
+            )
 
         if errors:
             raise ValidationError(errors)
+
 
 class RaceResult(models.Model):
     """

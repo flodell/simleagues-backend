@@ -39,9 +39,15 @@ class ChampionshipCRUDTests(APITestCase):
         self.league = League.objects.create(
             name="Test League", game=self.game, visibility=LeagueVisibility.PUBLIC
         )
-        LeagueMembership.objects.create(league=self.league, user=self.admin, role=LeagueMemberRole.ADMIN)
-        LeagueMembership.objects.create(league=self.league, user=self.moderator, role=LeagueMemberRole.MODERATOR)
-        LeagueMembership.objects.create(league=self.league, user=self.member, role=LeagueMemberRole.MEMBER)
+        LeagueMembership.objects.create(
+            league=self.league, user=self.admin, role=LeagueMemberRole.ADMIN
+        )
+        LeagueMembership.objects.create(
+            league=self.league, user=self.moderator, role=LeagueMemberRole.MODERATOR
+        )
+        LeagueMembership.objects.create(
+            league=self.league, user=self.member, role=LeagueMemberRole.MEMBER
+        )
 
         self.championship = Championship.objects.create(
             league=self.league,
@@ -52,8 +58,12 @@ class ChampionshipCRUDTests(APITestCase):
         )
 
         self.list_url = reverse("championship-list")
-        self.detail_url = reverse("championship-detail", kwargs={"pk": self.championship.pk})
-        self.status_url = reverse("championship-update-status", kwargs={"pk": self.championship.pk})
+        self.detail_url = reverse(
+            "championship-detail", kwargs={"pk": self.championship.pk}
+        )
+        self.status_url = reverse(
+            "championship-update-status", kwargs={"pk": self.championship.pk}
+        )
 
     # --- List ---
 
@@ -69,7 +79,9 @@ class ChampionshipCRUDTests(APITestCase):
             participant_type=ParticipantType.TEAM,
             status=ChampionshipStatus.UPCOMING,
         )
-        response = self.client.get(self.list_url, {"participant_type": ParticipantType.TEAM})
+        response = self.client.get(
+            self.list_url, {"participant_type": ParticipantType.TEAM}
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["count"], 1)
         self.assertEqual(response.data["results"][0]["name"], "Team Champ")
@@ -78,62 +90,84 @@ class ChampionshipCRUDTests(APITestCase):
 
     def test_create_as_admin(self):
         auth_client(self.client, self.admin)
-        response = self.client.post(self.list_url, {
-            "name": "New Championship",
-            "league": self.league.pk,
-            "participant_type": ParticipantType.INDIVIDUAL,
-            "start_date": "2026-01-01",
-        }, format="json")
+        response = self.client.post(
+            self.list_url,
+            {
+                "name": "New Championship",
+                "league": self.league.pk,
+                "participant_type": ParticipantType.INDIVIDUAL,
+                "start_date": "2026-01-01",
+            },
+            format="json",
+        )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_create_as_member_blocked(self):
         auth_client(self.client, self.member)
-        response = self.client.post(self.list_url, {
-            "name": "New Championship",
-            "league": self.league.pk,
-            "participant_type": ParticipantType.INDIVIDUAL,
-            "start_date": "2026-01-01",
-        }, format="json")
+        response = self.client.post(
+            self.list_url,
+            {
+                "name": "New Championship",
+                "league": self.league.pk,
+                "participant_type": ParticipantType.INDIVIDUAL,
+                "start_date": "2026-01-01",
+            },
+            format="json",
+        )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_create_name_too_short(self):
         auth_client(self.client, self.admin)
-        response = self.client.post(self.list_url, {
-            "name": "AB",
-            "league": self.league.pk,
-            "participant_type": ParticipantType.INDIVIDUAL,
-            "start_date": "2026-01-01",
-        }, format="json")
+        response = self.client.post(
+            self.list_url,
+            {
+                "name": "AB",
+                "league": self.league.pk,
+                "participant_type": ParticipantType.INDIVIDUAL,
+                "start_date": "2026-01-01",
+            },
+            format="json",
+        )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_create_end_date_before_start_date(self):
         auth_client(self.client, self.admin)
-        response = self.client.post(self.list_url, {
-            "name": "Valid Name",
-            "league": self.league.pk,
-            "participant_type": ParticipantType.INDIVIDUAL,
-            "start_date": "2026-01-01",
-            "end_date": "2025-01-01",
-        }, format="json")
+        response = self.client.post(
+            self.list_url,
+            {
+                "name": "Valid Name",
+                "league": self.league.pk,
+                "participant_type": ParticipantType.INDIVIDUAL,
+                "start_date": "2026-01-01",
+                "end_date": "2025-01-01",
+            },
+            format="json",
+        )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     # --- Update status ---
 
     def test_update_status_as_admin(self):
         auth_client(self.client, self.admin)
-        response = self.client.post(self.status_url, {"status": "ACTIVE"}, format="json")
+        response = self.client.post(
+            self.status_url, {"status": "ACTIVE"}, format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.championship.refresh_from_db()
         self.assertEqual(self.championship.status, ChampionshipStatus.ACTIVE)
 
     def test_update_status_as_moderator_blocked(self):
         auth_client(self.client, self.moderator)
-        response = self.client.post(self.status_url, {"status": "ACTIVE"}, format="json")
+        response = self.client.post(
+            self.status_url, {"status": "ACTIVE"}, format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_update_status_invalid(self):
         auth_client(self.client, self.admin)
-        response = self.client.post(self.status_url, {"status": "INVALID"}, format="json")
+        response = self.client.post(
+            self.status_url, {"status": "INVALID"}, format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
@@ -145,13 +179,22 @@ class ChampionshipEntryTests(APITestCase):
         self.other = User.objects.create_user(username="other", password="pass")
 
         self.game = Game.objects.create(name="Le Mans Ultimate", short_name="LMU")
-        self.car = Car.objects.create(name="Ferrari 499P", game=self.game, category=CarCategory.HYPERCAR, year=2024)
+        self.car = Car.objects.create(
+            name="Ferrari 499P",
+            game=self.game,
+            category=CarCategory.HYPERCAR,
+            year=2024,
+        )
 
         self.league = League.objects.create(
             name="Test League", game=self.game, visibility=LeagueVisibility.PUBLIC
         )
-        LeagueMembership.objects.create(league=self.league, user=self.admin, role=LeagueMemberRole.ADMIN)
-        LeagueMembership.objects.create(league=self.league, user=self.member, role=LeagueMemberRole.MEMBER)
+        LeagueMembership.objects.create(
+            league=self.league, user=self.admin, role=LeagueMemberRole.ADMIN
+        )
+        LeagueMembership.objects.create(
+            league=self.league, user=self.member, role=LeagueMemberRole.MEMBER
+        )
 
         self.championship = Championship.objects.create(
             league=self.league,
@@ -162,29 +205,50 @@ class ChampionshipEntryTests(APITestCase):
             max_participants=10,
         )
 
-        self.list_url = reverse("championship-entries-list", kwargs={"championship_pk": self.championship.pk})
-        self.register_url = reverse("championship-entries-register", kwargs={"championship_pk": self.championship.pk})
+        self.list_url = reverse(
+            "championship-entries-list",
+            kwargs={"championship_pk": self.championship.pk},
+        )
+        self.register_url = reverse(
+            "championship-entries-register",
+            kwargs={"championship_pk": self.championship.pk},
+        )
 
     def _entry_detail_url(self, entry_pk):
-        return reverse("championship-entries-detail", kwargs={
-            "championship_pk": self.championship.pk,
-            "pk": entry_pk,
-        })
+        return reverse(
+            "championship-entries-detail",
+            kwargs={
+                "championship_pk": self.championship.pk,
+                "pk": entry_pk,
+            },
+        )
 
     def _approve_url(self, entry_pk):
-        return reverse("championship-entries-approve", kwargs={
-            "championship_pk": self.championship.pk,
-            "pk": entry_pk,
-        })
+        return reverse(
+            "championship-entries-approve",
+            kwargs={
+                "championship_pk": self.championship.pk,
+                "pk": entry_pk,
+            },
+        )
 
     def _reject_url(self, entry_pk):
-        return reverse("championship-entries-reject", kwargs={
-            "championship_pk": self.championship.pk,
-            "pk": entry_pk,
-        })
+        return reverse(
+            "championship-entries-reject",
+            kwargs={
+                "championship_pk": self.championship.pk,
+                "pk": entry_pk,
+            },
+        )
 
-    def _create_entry(self, user=None, team=None, racing_number=42, status=ChampionshipEntryStatus.PENDING,
-                      championship=None):
+    def _create_entry(
+        self,
+        user=None,
+        team=None,
+        racing_number=42,
+        status=ChampionshipEntryStatus.PENDING,
+        championship=None,
+    ):
         return ChampionshipEntry.objects.create(
             championship=championship or self.championship,
             user=user,
@@ -198,57 +262,81 @@ class ChampionshipEntryTests(APITestCase):
 
     def test_register_public_league_auto_approved(self):
         auth_client(self.client, self.member)
-        response = self.client.post(self.register_url, {
-            "car": self.car.pk,
-            "racing_number": 42,
-            "user": self.member.pk,
-        }, format="json")
+        response = self.client.post(
+            self.register_url,
+            {
+                "car": self.car.pk,
+                "racing_number": 42,
+                "user": self.member.pk,
+            },
+            format="json",
+        )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        entry = ChampionshipEntry.objects.get(championship=self.championship, user=self.member)
+        entry = ChampionshipEntry.objects.get(
+            championship=self.championship, user=self.member
+        )
         self.assertEqual(entry.status, ChampionshipEntryStatus.APPROVED)
 
     def test_register_invite_only_pending(self):
         self.league.visibility = LeagueVisibility.INVITE_ONLY
         self.league.save()
         auth_client(self.client, self.member)
-        response = self.client.post(self.register_url, {
-            "car": self.car.pk,
-            "racing_number": 42,
-            "user": self.member.pk,
-        }, format="json")
+        response = self.client.post(
+            self.register_url,
+            {
+                "car": self.car.pk,
+                "racing_number": 42,
+                "user": self.member.pk,
+            },
+            format="json",
+        )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        entry = ChampionshipEntry.objects.get(championship=self.championship, user=self.member)
+        entry = ChampionshipEntry.objects.get(
+            championship=self.championship, user=self.member
+        )
         self.assertEqual(entry.status, ChampionshipEntryStatus.PENDING)
 
     def test_register_private_league_blocked(self):
         self.league.visibility = LeagueVisibility.PRIVATE
         self.league.save()
         auth_client(self.client, self.member)
-        response = self.client.post(self.register_url, {
-            "car": self.car.pk,
-            "racing_number": 42,
-            "user": self.member.pk,
-        }, format="json")
+        response = self.client.post(
+            self.register_url,
+            {
+                "car": self.car.pk,
+                "racing_number": 42,
+                "user": self.member.pk,
+            },
+            format="json",
+        )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_register_non_member_blocked(self):
         auth_client(self.client, self.other)
-        response = self.client.post(self.register_url, {
-            "car": self.car.pk,
-            "racing_number": 42,
-            "user": self.other.pk,
-        }, format="json")
+        response = self.client.post(
+            self.register_url,
+            {
+                "car": self.car.pk,
+                "racing_number": 42,
+                "user": self.other.pk,
+            },
+            format="json",
+        )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_register_completed_championship_blocked(self):
         self.championship.status = ChampionshipStatus.COMPLETED
         self.championship.save()
         auth_client(self.client, self.member)
-        response = self.client.post(self.register_url, {
-            "car": self.car.pk,
-            "racing_number": 42,
-            "user": self.member.pk,
-        }, format="json")
+        response = self.client.post(
+            self.register_url,
+            {
+                "car": self.car.pk,
+                "racing_number": 42,
+                "user": self.member.pk,
+            },
+            format="json",
+        )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_register_team_entry_as_non_manager_blocked(self):
@@ -261,13 +349,19 @@ class ChampionshipEntryTests(APITestCase):
         )
         team = Team.objects.create(name="Red Racing")
         TeamMembership.objects.create(team=team, user=self.member, role=TeamRole.DRIVER)
-        register_url = reverse("championship-entries-register", kwargs={"championship_pk": team_champ.pk})
+        register_url = reverse(
+            "championship-entries-register", kwargs={"championship_pk": team_champ.pk}
+        )
         auth_client(self.client, self.member)
-        response = self.client.post(register_url, {
-            "car": self.car.pk,
-            "racing_number": 42,
-            "team": team.pk,
-        }, format="json")
+        response = self.client.post(
+            register_url,
+            {
+                "car": self.car.pk,
+                "racing_number": 42,
+                "team": team.pk,
+            },
+            format="json",
+        )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     # --- Staff actions ---

@@ -13,15 +13,16 @@ class TeamListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Team
         fields = [
-            'id',
-            'name',
-            'logo',
-            'description',
-            'member_count',
-            'is_active',
-            'created_at',
+            "id",
+            "name",
+            "logo",
+            "description",
+            "member_count",
+            "is_active",
+            "created_at",
         ]
-        read_only_fields = ['id', 'created_at']
+        read_only_fields = ["id", "created_at"]
+
 
 class TeamDetailSerializer(serializers.ModelSerializer):
     member_count = serializers.IntegerField(read_only=True)  # From queryset annotation
@@ -29,27 +30,28 @@ class TeamDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Team
         fields = [
-            'id',
-            'name',
-            'logo',
-            'description',
-            'member_count',
-            'is_active',
-            'total_races',
-            'total_wins',
-            'total_podiums',
-            'created_at',
-            'updated_at',
+            "id",
+            "name",
+            "logo",
+            "description",
+            "member_count",
+            "is_active",
+            "total_races",
+            "total_wins",
+            "total_podiums",
+            "created_at",
+            "updated_at",
         ]
         read_only_fields = [
-            'id',
-            'member_count',
-            'total_races',
-            'total_wins',
-            'total_podiums',
-            'created_at',
-            'updated_at',
-            ]
+            "id",
+            "member_count",
+            "total_races",
+            "total_wins",
+            "total_podiums",
+            "created_at",
+            "updated_at",
+        ]
+
 
 class TeamCreateSerializer(serializers.ModelSerializer):
 

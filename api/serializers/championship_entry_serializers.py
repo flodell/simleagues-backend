@@ -26,7 +26,14 @@ class ChampionshipEntrySerializer(serializers.ModelSerializer):
             "joined_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "championship", "status", "ban_reason", "joined_at", "updated_at"]
+        read_only_fields = [
+            "id",
+            "championship",
+            "status",
+            "ban_reason",
+            "joined_at",
+            "updated_at",
+        ]
 
 
 class ChampionshipEntryCreateSerializer(serializers.ModelSerializer):
@@ -47,14 +54,20 @@ class ChampionshipEntryCreateSerializer(serializers.ModelSerializer):
             errors["racing_number"] = "This racing number is already taken."
 
         # Validate team/user not already registered
-        if data.get("team") and ChampionshipEntry.objects.filter(
-            championship=championship, team=data["team"]
-        ).exists():
+        if (
+            data.get("team")
+            and ChampionshipEntry.objects.filter(
+                championship=championship, team=data["team"]
+            ).exists()
+        ):
             errors["team"] = "This team is already registered in this championship."
 
-        if data.get("user") and ChampionshipEntry.objects.filter(
-            championship=championship, user=data["user"], team__isnull=True
-        ).exists():
+        if (
+            data.get("user")
+            and ChampionshipEntry.objects.filter(
+                championship=championship, user=data["user"], team__isnull=True
+            ).exists()
+        ):
             errors["user"] = "This user is already registered in this championship."
 
         if errors:

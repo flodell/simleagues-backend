@@ -6,7 +6,9 @@ from core.models.race import Race
 class RaceListSerializer(serializers.ModelSerializer):
 
     league_name = serializers.CharField(source="league.name", read_only=True)
-    championship_name = serializers.CharField(source="championship.name", read_only=True)
+    championship_name = serializers.CharField(
+        source="championship.name", read_only=True
+    )
     track_name = serializers.CharField(source="track.name", read_only=True)
     entry_count = serializers.IntegerField(read_only=True)
 
@@ -36,7 +38,9 @@ class RaceListSerializer(serializers.ModelSerializer):
 class RaceDetailSerializer(serializers.ModelSerializer):
 
     league_name = serializers.CharField(source="league.name", read_only=True)
-    championship_name = serializers.CharField(source="championship.name", read_only=True)
+    championship_name = serializers.CharField(
+        source="championship.name", read_only=True
+    )
     track_name = serializers.CharField(source="track.name", read_only=True)
     creator_username = serializers.CharField(source="creator.username", read_only=True)
     entry_count = serializers.IntegerField(read_only=True)
@@ -69,7 +73,13 @@ class RaceDetailSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "creator", "invitation_code", "created_at", "updated_at"]
+        read_only_fields = [
+            "id",
+            "creator",
+            "invitation_code",
+            "created_at",
+            "updated_at",
+        ]
 
 
 class RaceCreateSerializer(serializers.ModelSerializer):

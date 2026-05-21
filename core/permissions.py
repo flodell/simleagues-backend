@@ -23,8 +23,10 @@ class IsLeagueMember(BasePermission):
 
 # Team
 
+
 class IsTeamOwner(BasePermission):
     """Only team owner can perform this action."""
+
     def has_permission(self, request, view):
         return request.user and request.user.is_authenticated
 
