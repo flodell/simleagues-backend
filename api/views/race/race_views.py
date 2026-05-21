@@ -31,7 +31,7 @@ class RaceViewSet(viewsets.ModelViewSet):
         user = self.request.user
         queryset = Race.objects.annotate(
             entry_count=Count("entries", distinct=True)
-        ).select_related("league", "championship", "track", "creator")
+        ).select_related("league", "championship", "track", "creator").order_by("-scheduled_date")
 
         if not user.is_authenticated:
             return queryset.filter(

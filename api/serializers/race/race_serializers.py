@@ -77,6 +77,7 @@ class RaceCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Race
         fields = [
+            "id",
             "name",
             "league",
             "championship",
@@ -88,6 +89,7 @@ class RaceCreateSerializer(serializers.ModelSerializer):
             "visibility",
             "notes",
         ]
+        read_only_fields = ["id"]
 
     def validate(self, data):
         errors = {}

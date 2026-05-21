@@ -32,11 +32,14 @@ class RaceEntrySerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "race", "status", "ban_reason", "created_at", "updated_at"]
 
     def get_car_name(self, obj):
-        car = obj.effective_car
-        return car.name if car else None
+        if obj.championship_entry:
+            return obj.championship_entry.car.name
+        return obj.car.name if obj.car else None
 
     def get_racing_number_display(self, obj):
-        return obj.effective_racing_number
+        if obj.championship_entry:
+            return obj.championship_entry.racing_number
+        return obj.racing_number
 
 
 class RaceEntryCreateSerializer(serializers.ModelSerializer):
