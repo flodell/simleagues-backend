@@ -21,6 +21,13 @@ class RaceStatus(models.TextChoices):
     CANCELLED = "CANCELLED", "Cancelled"
 
 
+class RaceEntryStatus(models.TextChoices):
+    PENDING = "PENDING", "Pending"
+    APPROVED = "APPROVED", "Approved"
+    REJECTED = "REJECTED", "Rejected"
+    BANNED = "BANNED", "Banned"
+
+
 class RaceVisibility(models.TextChoices):
     PUBLIC = "PUBLIC", "Public (Anyone can view)"
     UNLISTED = "UNLISTED", "Unlisted (Only with link)"
@@ -58,9 +65,40 @@ class ChampionshipStatus(models.TextChoices):
     CANCELLED = "CANCELLED", "Cancelled"
 
 
+class ChampionshipEntryStatus(models.TextChoices):
+    PENDING = "PENDING", "Pending"
+    APPROVED = "APPROVED", "Approved"
+    REJECTED = "REJECTED", "Rejected"
+    BANNED = "BANNED", "Banned"
+
+
 # PARTICIPANT CHOICES
 
 
 class ParticipantType(models.TextChoices):
     TEAM = "TEAM", "Team"
     INDIVIDUAL = "INDIVIDUAL", "Individual"
+
+
+# TEAM CHOICES
+
+
+class TeamRole(models.TextChoices):
+    OWNER = "OWNER", "Owner"
+    MANAGER = "MANAGER", "Manager"
+    DRIVER = "DRIVER", "Driver"
+    RESERVE = "RESERVE", "Reserve"
+
+
+class TeamJoinRequestStatus(models.TextChoices):
+    PENDING = "PENDING", "Pending"
+    APPROVED = "APPROVED", "Approved"
+    REJECTED = "REJECTED", "Rejected"
+    CANCELLED = "CANCELLED", "Cancelled"
+
+
+class LeagueTeamRegistrationStatus(models.TextChoices):
+    PENDING = "PENDING", "Pending"
+    APPROVED = "APPROVED", "Approved"
+    REJECTED = "REJECTED", "Rejected"
+    BANNED = "BANNED", "Banned"

@@ -28,14 +28,6 @@ class League(models.Model):
 
     description = models.TextField(blank=True, help_text="League description and rules")
 
-    # Creator
-    creator = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name="created_leagues",
-        help_text="User who created this league",
-    )
-
     # Visibility and Access Control
     visibility = models.CharField(
         max_length=20,
@@ -112,57 +104,6 @@ class League(models.Model):
         return self.memberships.filter(
             user=user, role__in=[LeagueMemberRole.ADMIN, LeagueMemberRole.MODERATOR]
         ).exists()
-
-    # Specific permission checks
-    def can_manage_races(self, user):
-        """Check if user can create and manage races."""
-        return self.is_staff(user)
-
-    def can_manage_championships(self, user):
-        """Check if user can create and manage championship."""
-        return self.is_staff(user)
-
-    def can_approve_members(self, user):
-        """Check if user can approve join requests."""
-        return self.is_staff(user)
-
-    def can_kick_members(self, user):
-        """Check if user can kick members."""
-        return self.is_staff(user)
-
-    def can_edit_league(self, user):
-        """Check if user can edit league settings."""
-        return self.is_admin(user)
-
-    def can_delete_league(self, user):
-        """Check if user can delete the league."""
-        return self.is_admin(user)
-
-    def can_promote_to_moderator(self, user):
-        """Check if user can promote members to moderator."""
-        return self.is_admin(user)
-
-    def can_promote_to_admin(self, user):
-        """Check if user can promote members to admin."""
-        return self.is_admin(user)
-
-    def can_user_join(self, user):
-        """
-        Check if a user can join the league.
-
-        Returns tuple: (can_join: bool, reason: str)
-        """
-        if self.is_member(user):
-            return False, "Already a member"
-        match self.visibility:
-            case LeagueVisibility.PUBLIC:
-                return True, "Public league"
-            case LeagueVisibility.INVITE_ONLY:
-                return False, "Invitation code required"
-            case LeagueVisibility.PRIVATE:
-                return False, "Admin approval required"
-
-        return False, "Unknown visibility setting"
 
 
 class LeagueMembership(models.Model):
