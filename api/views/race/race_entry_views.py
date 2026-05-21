@@ -7,7 +7,7 @@ from api.serializers.race.race_entry_serializers import (
     RaceEntryCreateSerializer,
     RaceEntrySerializer,
 )
-from core.models.race import Race, RaceEntry
+from core.models.races.race import Race, RaceEntry
 from core.models.championship import ChampionshipEntry
 from core.models.choices import RaceEntryStatus, LeagueVisibility, RaceStatus, TeamRole
 from core.models.team import TeamMembership

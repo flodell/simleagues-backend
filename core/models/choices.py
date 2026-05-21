@@ -34,6 +34,45 @@ class RaceVisibility(models.TextChoices):
     PRIVATE = "PRIVATE", "Private (League members only)"
 
 
+class FuelUsage(models.TextChoices):
+    OFF = 'OFF', 'Off'
+    X1 = 'X1', 'x1'
+    X2 = 'X2', 'x2'
+    X3 = 'X3', 'x3'
+    X5 = 'X5', 'x5'
+
+
+class TireWear(models.TextChoices):
+    X1 = 'X1', 'x1'
+    X2 = 'X2', 'x2'
+    X3 = 'X3', 'x3'
+
+
+class MechanicalFailures(models.TextChoices):
+    OFF = 'OFF', 'Off'
+    NORMAL = 'NORMAL', 'Normal'
+    TIME_SCALED = 'TIME_SCALED', 'Time-scaled'
+
+
+class FlagRules(models.TextChoices):
+    FULL = 'FULL', 'Full'
+    PARTIAL = 'PARTIAL', 'Partial'
+    NONE = 'NONE', 'None'
+
+
+class TrackLimits(models.TextChoices):
+    STRICT = 'STRICT', 'Strict'
+    NORMAL = 'NORMAL', 'Normal'
+    RELAXED = 'RELAXED', 'Relaxed'
+
+
+class SkyCondition(models.TextChoices):
+    CLEAR = 'CLEAR', 'Clear'
+    PARTLY_CLOUDY = 'PARTLY_CLOUDY', 'Partly cloudy'
+    OVERCAST = 'OVERCAST', 'Overcast'
+    LIGHT_RAIN = 'LIGHT_RAIN', 'Light rain'
+    HEAVY_RAIN = 'HEAVY_RAIN', 'Heavy rain'
+
 # LEAGUE CHOICES
 
 

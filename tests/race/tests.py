@@ -15,7 +15,7 @@ from core.models.choices import (
 )
 from core.models.game import Game
 from core.models.league import League, LeagueMembership
-from core.models.race import Race, RaceEntry
+from core.models.races.race import Race, RaceEntry
 from core.models.track import Track
 
 User = get_user_model()

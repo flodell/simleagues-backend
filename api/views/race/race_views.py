@@ -11,7 +11,7 @@ from api.serializers.race.race_serializers import (
     RaceUpdateSerializer,
 )
 from core.models.choices import RaceVisibility, RaceStatus
-from core.models.race import Race
+from core.models.races.race import Race
 
 
 class RaceViewSet(viewsets.ModelViewSet):
