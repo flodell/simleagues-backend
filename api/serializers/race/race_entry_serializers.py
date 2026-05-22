@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from core.models.races.race import RaceEntry
+from core.models import RaceEntry
 
 
 class RaceEntrySerializer(serializers.ModelSerializer):

@@ -4,6 +4,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from core.models import RaceEntry
 from core.models.car import Car
 from core.models.choices import (
     LeagueVisibility,
@@ -15,7 +16,7 @@ from core.models.choices import (
 )
 from core.models.game import Game
 from core.models.league import League, LeagueMembership
-from core.models.races.race import Race, RaceEntry
+from core.models.races.race import Race
 from core.models.track import Track
 
 User = get_user_model()
