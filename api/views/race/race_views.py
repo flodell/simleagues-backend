@@ -11,7 +11,9 @@ from api.serializers.race.race_serializers import (
     RaceUpdateSerializer,
 )
 from core.models.choices import RaceVisibility, RaceStatus
-from core.models.race import Race
+from core.models.races.race import Race
+from core.services.race_permissions import can_manage_race
+from core.services.race_setup import ensure_race_rules_and_weather
 
 
 class RaceViewSet(viewsets.ModelViewSet):
@@ -64,14 +66,11 @@ class RaceViewSet(viewsets.ModelViewSet):
 
     def _is_authorized(self, request, race):
         """Check if user is creator or league staff."""
-        if race.creator == request.user:
-            return True
-        if race.league and race.league.is_staff(request.user):
-            return True
-        return False
+        return can_manage_race(request.user, race)
 
     def perform_create(self, serializer):
-        serializer.save(creator=self.request.user)
+        race = serializer.save(creator=self.request.user)
+        ensure_race_rules_and_weather(race)
 
     def update(self, request, *args, **kwargs):
         race = self.get_object()

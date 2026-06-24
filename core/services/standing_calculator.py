@@ -1,6 +1,6 @@
 from core.models.championship import Standing
 from core.models.choices import ParticipantType, RaceStatus
-from core.models.race import RaceResult
+from core.models.races.race import RaceResult
 
 
 class StandingCalculator:

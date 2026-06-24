@@ -15,13 +15,17 @@ from api.views.league_views import LeagueViewSet
 from api.views.championship_views import ChampionshipViewSet
 from api.views.race.race_entry_views import RaceEntryViewSet
 from api.views.race.race_lineup_views import RaceLineupViewSet
+from api.views.race.race_rules_template_views import RaceRulesTemplateViewSet
+from api.views.race.race_rules_views import RaceRulesView
 from api.views.race.race_views import RaceViewSet
+from api.views.race.race_weather_views import RaceWeatherViewSet
 from api.views.team_views import TeamViewSet
 
 router = DefaultRouter()
 router.register(r"leagues", LeagueViewSet, basename="league")
 router.register(r"championships", ChampionshipViewSet, basename="championship")
 router.register(r"teams", TeamViewSet, basename="team")
+router.register(r"race-rules-templates", RaceRulesTemplateViewSet, basename="race-rules-template")
 
 championship_router = nested_routers.NestedDefaultRouter(
     router, r"championships", lookup="championship"
@@ -35,7 +39,7 @@ router.register(r"races", RaceViewSet, basename="race")
 race_router = nested_routers.NestedDefaultRouter(router, r"races", lookup="race")
 race_router.register(r"entries", RaceEntryViewSet, basename="race-entries")
 race_router.register(r"lineups", RaceLineupViewSet, basename="race-lineups")
-
+race_router.register(r"weather", RaceWeatherViewSet, basename="race-weather")
 urlpatterns = (
     [
         path("auth/register/", RegisterView.as_view(), name="register"),
@@ -45,6 +49,11 @@ urlpatterns = (
         path("me/", MeView.as_view(), name="me"),
         path(
             "update-password/", UpdateUserPasswordView.as_view(), name="update_password"
+        ),
+        path(
+            "races/<int:race_pk>/rules/",
+            RaceRulesView.as_view(),
+            name="race-rules",
         ),
     ]
     + router.urls
