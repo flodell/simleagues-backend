@@ -1,6 +1,5 @@
 from core.constants import DEFAULT_WEATHER
 from core.models import RaceRules, RaceWeather
-from core.models.choices import SkyCondition
 
 
 def ensure_race_rules_and_weather(race):
