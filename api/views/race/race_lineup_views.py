@@ -1,16 +1,23 @@
-from rest_framework import viewsets, status
+from django.http import Http404
+from django.shortcuts import get_object_or_404
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from api.serializers.race.race_lineup_serializers import (
     RaceLineupCreateSerializer,
-    RaceLineupSerializer,
     RaceLineupDriverCreateSerializer,
     RaceLineupDriverSerializer,
+    RaceLineupSerializer,
 )
-from core.models import Race, RaceLineup, TeamMembership, RaceLineupDriver
+from core.models import Race, RaceLineup, RaceLineupDriver, TeamMembership
 from core.models.choices import TeamRole
+from core.services.race_permissions import can_manage_race, can_view_race
+
+
+# Roles within a team that can manage a lineup.
+TEAM_MANAGER_ROLES = frozenset({TeamRole.OWNER, TeamRole.MANAGER})
 
 
 class RaceLineupViewSet(viewsets.ModelViewSet):
@@ -19,13 +26,18 @@ class RaceLineupViewSet(viewsets.ModelViewSet):
 
     Nested under race: /races/{race_pk}/lineups/
 
-    - List/retrieve: public
-    - Create: staff or team owner/manager
-    - add_driver/remove_driver: staff or team owner/manager
+    - List/retrieve: anyone who can view the race
+    - Create / destroy / add_driver / remove_driver: league staff or team owner/manager
+    - Update: not supported (use add-driver/remove-driver actions instead)
     """
 
+    http_method_names = ["get", "post", "delete", "head", "options"]
+
     def get_race(self):
-        return Race.objects.select_related("league").get(pk=self.kwargs["race_pk"])
+        race = get_object_or_404(Race, pk=self.kwargs["race_pk"])
+        if not can_view_race(self.request.user, race):
+            raise Http404("Race not found.")
+        return race
 
     def get_queryset(self):
         race = self.get_race()
@@ -48,8 +60,9 @@ class RaceLineupViewSet(viewsets.ModelViewSet):
             return [AllowAny()]
         return [IsAuthenticated()]
 
-    def _check_permission(self, request, race, race_entry):
-        if race.league and race.league.is_staff(request.user):
+    def _can_manage_lineup(self, user, race, race_entry):
+        """League staff (via can_manage_race) OR team owner/manager."""
+        if can_manage_race(user, race):
             return True
 
         team = race_entry.team or (
@@ -60,8 +73,8 @@ class RaceLineupViewSet(viewsets.ModelViewSet):
 
         return TeamMembership.objects.filter(
             team=team,
-            user=request.user,
-            role__in=[TeamRole.OWNER, TeamRole.MANAGER],
+            user=user,
+            role__in=TEAM_MANAGER_ROLES,
             is_active=True,
         ).exists()
 
@@ -73,13 +86,18 @@ class RaceLineupViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         race_entry = serializer.validated_data["race_entry"]
 
-        if not self._check_permission(request, race, race_entry):
+        if race_entry.race_id != race.pk:
+            return Response(
+                {"detail": "RaceEntry does not belong to this race."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not self._can_manage_lineup(request.user, race, race_entry):
             return Response(
                 {"detail": "You are not authorized to manage this lineup."},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        # Check lineup doesn't already exist
         if RaceLineup.objects.filter(race=race, race_entry=race_entry).exists():
             return Response(
                 {"detail": "A lineup already exists for this race entry."},
@@ -97,7 +115,7 @@ class RaceLineupViewSet(viewsets.ModelViewSet):
         race = self.get_race()
         lineup = self.get_object()
 
-        if not self._check_permission(request, race, lineup.race_entry):
+        if not self._can_manage_lineup(request.user, race, lineup.race_entry):
             return Response(
                 {"detail": "You are not authorized to manage this lineup."},
                 status=status.HTTP_403_FORBIDDEN,
@@ -115,7 +133,7 @@ class RaceLineupViewSet(viewsets.ModelViewSet):
         race = self.get_race()
         lineup = self.get_object()
 
-        if not self._check_permission(request, race, lineup.race_entry):
+        if not self._can_manage_lineup(request.user, race, lineup.race_entry):
             return Response(
                 {"detail": "You are not authorized to manage this lineup."},
                 status=status.HTTP_403_FORBIDDEN,
@@ -139,7 +157,7 @@ class RaceLineupViewSet(viewsets.ModelViewSet):
         race = self.get_race()
         lineup = self.get_object()
 
-        if not self._check_permission(request, race, lineup.race_entry):
+        if not self._can_manage_lineup(request.user, race, lineup.race_entry):
             return Response(
                 {"detail": "You are not authorized to manage this lineup."},
                 status=status.HTTP_403_FORBIDDEN,
